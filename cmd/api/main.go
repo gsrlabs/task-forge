@@ -11,8 +11,13 @@ import (
 	"task-forge/internal/cache"
 	"task-forge/internal/config"
 	"task-forge/internal/database"
+	"task-forge/internal/handler"
+	"task-forge/internal/repository"
+	"task-forge/internal/service"
+	"task-forge/internal/validator"
 	"time"
 
+	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -89,12 +94,45 @@ func run(ctx context.Context) error {
 		}
 	}()
 
-	// ...
+	// Repositories
+	repos := repository.NewRepositories(db, log.Logger)
+	log.Info().Msg("Repositories initialized")
+
+	// Services
+	jwtManager := service.NewJWTManager(cfg.App.EncryptionKey, cfg.JWTExpiration())
+	services := service.NewServices(repos, jwtManager, log.Logger)
+	log.Info().Msg("Services initialized")
+
+	// Validator
+	appValidator := validator.NewValidator()
+	log.Info().Msg("Validator initialized")
+
+	// Handlers & Router
+	handlers := handler.NewHandlers(
+		services,
+		appValidator,
+		cacheService,
+		int(cfg.JWTExpiration().Seconds()),
+		cfg.App.Mode,
+		cfg.App.EncryptionKey,
+		log.Logger,
+	)
+
+	if cfg.App.Mode == "release" || cfg.App.Mode == "production" {
+		gin.SetMode(gin.ReleaseMode)
+	}
+
+	router := gin.New()
+	router.Use(gin.Recovery())
+	router.Use(ginLogger(log.Logger))
+
+	handlers.RegisterRoutes(router)
+	log.Info().Msg("Routes registered")
 
 	// HTTP server
 	server := &http.Server{
 		Addr: ":" + cfg.App.Port,
-		// Handler: router,
+		Handler: router,
 	}
 
 	serverErr := make(chan error, 1)
@@ -132,4 +170,36 @@ func run(ctx context.Context) error {
 	log.Info().Msg("HTTP server stopped")
 
 	return nil
+}
+
+// ginLogger middleware for logging HTTP requests via zerolog.
+func ginLogger(logger zerolog.Logger) gin.HandlerFunc {
+	return func(c *gin.Context) {
+		start := time.Now()
+		path := c.Request.URL.Path
+		query := c.Request.URL.RawQuery
+
+		c.Next()
+
+		latency := time.Since(start)
+		status := c.Writer.Status()
+
+		event := logger.Info()
+		if status >= 400 {
+			event = logger.Warn()
+		}
+		if status >= 500 {
+			event = logger.Error()
+		}
+
+		event.
+			Int("status", status).
+			Str("method", c.Request.Method).
+			Str("path", path).
+			Str("query", query).
+			Str("ip", c.ClientIP()).
+			Str("user-agent", c.Request.UserAgent()).
+			Dur("latency", latency).
+			Msg("HTTP request")
+	}
 }

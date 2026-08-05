@@ -94,6 +94,7 @@ services:
       APP_PORT: ${APP_PORT}
       APP_MODE: ${APP_MODE}
       APP_LOGGING_LEVEL: ${APP_LOGGING_LEVEL}
+      APP_ENCRYPTION_KEY: ${APP_ENCRYPTION_KEY}
 
       # -----------------------------------------------------------------------
       # Authentication
