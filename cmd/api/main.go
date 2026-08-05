@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"task-forge/infrastructure/cache"
 	"task-forge/internal/config"
 	"task-forge/internal/database"
 	"time"
@@ -61,13 +62,13 @@ func run(ctx context.Context) error {
 	)
 	defer stop()
 
-  // Database
+	// Database
 	db, err := database.OpenPostgres(ctx, cfg.Database, cfg.App.Mode, log.Logger)
 	if err != nil {
 		log.Fatal().Err(err).Msg("Failed to connect to database")
 	}
 	defer db.Close()
-	
+
 	log.Info().Msg("Connected to database")
 
 	// Migrations
@@ -77,7 +78,18 @@ func run(ctx context.Context) error {
 		}
 	}
 
-  // ...
+	// Redis Cache
+	cacheService, err := cache.NewCacheService(cfg.Redis, log.Logger)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to Redis")
+	}
+	defer func() {
+		if err := cacheService.Close(); err != nil {
+			log.Error().Err(err).Msg("Error closing Redis connection")
+		}
+	}()
+
+	// ...
 
 	// HTTP server
 	server := &http.Server{
