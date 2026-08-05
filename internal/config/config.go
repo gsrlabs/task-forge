@@ -8,8 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/spf13/viper"
 	"github.com/rs/zerolog"
+	"github.com/spf13/viper"
 )
 
 type ValidationSeverity string
@@ -55,8 +55,10 @@ type DatabaseConfig struct {
 }
 
 type MigrationConfig struct {
-	Auto bool `mapstructure:"auto"`
-	Path string
+	Auto     bool   `mapstructure:"auto"`
+	User     string `mapstructure:"user"`
+	Password string `mapstructure:"password"`
+	Path     string `mapstructure:"-"`
 }
 
 type LoggingConfig struct {
@@ -145,8 +147,16 @@ func Load() (*Config, error) {
 	// MIGRATIONS
 	// =========================================================================
 
-	if err := v.BindEnv("migrations.auto", "APP_MIGRATIONS_AUTO"); err != nil {
+	if err := v.BindEnv("migrations.auto", "MIGRATIONS_AUTO"); err != nil {
 		return nil, fmt.Errorf("bind APP_MIGRATIONS_AUTO: %w", err)
+	}
+
+	if err := v.BindEnv("migrations.user", "MIGRATION_DB_USER"); err != nil {
+		return nil, fmt.Errorf("bind MIGRATION_DB_USER: %w", err)
+	}
+
+	if err := v.BindEnv("migrations.password", "MIGRATION_DB_PASSWORD"); err != nil {
+		return nil, fmt.Errorf("bind MIGRATION_DB_PASSWORD: %w", err)
 	}
 
 	v.SetDefault("migrations.auto", false)
@@ -230,7 +240,7 @@ func (c *Config) Validate() ValidationReport {
 		report.Errors = append(report.Errors, ValidationError{
 			Severity: SeverityWarning,
 			Field:    "app.mode",
-			Message:  fmt.Sprintf(
+			Message: fmt.Sprintf(
 				"unknown APP_MODE %q, recommended values: debug, development, release, production",
 				c.App.Mode,
 			),
@@ -335,12 +345,22 @@ func (c *Config) Validate() ValidationReport {
 	// MIGRATIONS
 	// =========================================================================
 
-	if !c.Migrations.Auto {
-		report.Errors = append(report.Errors, ValidationError{
-			Severity: SeverityWarning,
-			Field:    "migrations.auto",
-			Message:  "automatic migrations are disabled; database schema must be migrated manually",
-		})
+	if c.Migrations.Auto {
+		if strings.TrimSpace(c.Migrations.User) == "" {
+			report.Errors = append(report.Errors, ValidationError{
+				Severity: SeverityFatal,
+				Field:    "migrations.user",
+				Message:  "MIGRATION_DB_USER is required when automatic migrations are enabled",
+			})
+		}
+
+		if strings.TrimSpace(c.Migrations.Password) == "" {
+			report.Errors = append(report.Errors, ValidationError{
+				Severity: SeverityFatal,
+				Field:    "migrations.password",
+				Message:  "MIGRATION_DB_PASSWORD is required when automatic migrations are enabled",
+			})
+		}
 	}
 
 	return report
@@ -374,4 +394,3 @@ func (r ValidationReport) Log(logger *zerolog.Logger) {
 func (c *Config) JWTExpiration() time.Duration {
 	return time.Duration(c.JWT.Expiry) * 24 * time.Hour
 }
-

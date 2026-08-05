@@ -9,6 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 	"task-forge/internal/config"
+	"task-forge/internal/database"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -59,6 +60,22 @@ func run(ctx context.Context) error {
 		syscall.SIGTERM,
 	)
 	defer stop()
+
+  // Database
+	db, err := database.OpenPostgres(ctx, cfg.Database, cfg.App.Mode, log.Logger)
+	if err != nil {
+		log.Fatal().Err(err).Msg("Failed to connect to database")
+	}
+	defer db.Close()
+	
+	log.Info().Msg("Connected to database")
+
+	// Migrations
+	if cfg.Migrations.Auto {
+		if err := database.RunMigrations(cfg.Database, cfg.Migrations, log.Logger); err != nil {
+			log.Fatal().Err(err).Msg("Failed to run migrations")
+		}
+	}
 
   // ...
 

@@ -113,7 +113,9 @@ services:
       # -----------------------------------------------------------------------
       # Migrations
       # -----------------------------------------------------------------------
-      APP_MIGRATIONS_AUTO: ${APP_MIGRATIONS_AUTO}
+      MIGRATIONS_AUTO: ${MIGRATIONS_AUTO}
+      MIGRATION_DB_USER: ${MIGRATION_DB_USER}
+      MIGRATION_DB_PASSWORD: ${MIGRATION_DB_PASSWORD}
 
       # -----------------------------------------------------------------------
       # Redis
