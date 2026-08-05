@@ -8,7 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
-	"task-forge/infrastructure/cache"
+	"task-forge/internal/cache"
 	"task-forge/internal/config"
 	"task-forge/internal/database"
 	"time"
