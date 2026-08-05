@@ -1,8 +1,17 @@
 package main
 
-import "fmt"
+import (
+
+	"os"
+
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
+)
 
 func main() {
-	fmt.Println("Запуск Сервера")
+	zerolog.TimeFieldFormat = zerolog.TimeFormatUnix
+	log.Logger = zerolog.New(os.Stderr).With().Timestamp().Logger()
+
+	
 }
 
