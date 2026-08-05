@@ -1,104 +1,157 @@
 services:
-  # ---------------------------------------------------------------------------
-  # Postgres
-  # ---------------------------------------------------------------------------
+  # ===========================================================================
+  # PostgreSQL
+  # ===========================================================================
   postgres:
     image: postgres:18-alpine
     container_name: taskforge-postgres
     restart: unless-stopped
+
     ports:
-      - "5432:5432"
+      - "${POSTGRES_PORT:-5432}:5432"
+
     environment:
-      POSTGRES_USER: ${POSTGRES_USER:-taskforge}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-postgres_dev_password}
-      POSTGRES_DB: ${POSTGRES_DB:-taskforge_db}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
+
     volumes:
       - postgres_data:/var/lib/postgresql
       - ./infrastructure/postgres/init:/docker-entrypoint-initdb.d:ro
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER:-taskforge} -d $${POSTGRES_DB:-taskforge_db}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 10s
+
     networks:
       - taskforge-network
 
+
+  # ===========================================================================
+  # Redis
+  # ===========================================================================
   redis:
     image: redis:8-alpine
     container_name: taskforge-redis
     restart: unless-stopped
-    command: >
-      redis-server /usr/local/etc/redis/redis.conf
-      --requirepass ${REDIS_PASSWORD}
+
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+
+    command:
+      - redis-server
+      - /usr/local/etc/redis/redis.conf
+      - --requirepass
+      - "${REDIS_PASSWORD}"
+
     environment:
-      - REDIS_PASSWORD=${REDIS_PASSWORD}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
     volumes:
       - redis_data:/data
       - ./infrastructure/redis/redis.conf:/usr/local/etc/redis/redis.conf:ro
-    ports:
-      - "6379:6379"
+
     healthcheck:
-      test: ["CMD", "redis-cli", "ping"]
+      test:
+        [
+          "CMD",
+          "redis-cli",
+          "-a",
+          "${REDIS_PASSWORD}",
+          "ping"
+        ]
       interval: 10s
       timeout: 5s
       retries: 5
+      start_period: 5s
+
     networks:
       - taskforge-network
 
-  # ---------------------------------------------------------------------------
-  # task-forge service (Go)
-  # ---------------------------------------------------------------------------
+
+  # ===========================================================================
+  # Task Forge API
+  # ===========================================================================
   app:
     build:
       context: .
       dockerfile: Dockerfile
+
     container_name: taskforge
+    restart: unless-stopped
+
     environment:
-      # APP
-      APP_PORT: 8081
-      APP_SECRET: ${APP_SECRET}
-      # DB
-      DB_HOST: postgres
-      DB_PORT: 5432
-      DB_NAME: taskforge_db
-      DB_USER: taskforge_app
-      DB_PASSWORD: postgres_dev_password
-      MIGRATIONS_AUTO: ${MIGRATIONS_AUTO:-true}
-      # REDIS
-      REDIS_ADDR: redis:6379
-      REDIS_PASSWORD: 
-      
-      # # EMAIL
-      # EMAIL_MODE: ${EMAIL_MODE:-smtp}
-      # # MAILTRAP
-      # MAILTRAP_API_KEY: ${MAILTRAP_API_KEY}
-      # MAILTRAP_DOMAIN: ${MAILTRAP_DOMAIN:-hello@demomailtrap.co}
-      # MAILTRAP_NAME: ${MAILTRAP_NAME:-taskforge}
-      # # SMTP
-      # SMTP_HOST: ${SMTP_HOST:-mailpit}
-      # SMTP_PORT: ${SMTP_PORT:-1025}
-      # SMTP_FROM: ${SMTP_FROM:-yourapp@example.com}
-      # SMTP_USER: ${SMTP_USER}
-      # SMTP_PASSWORD: ${SMTP_PASSWORD}
+      # -----------------------------------------------------------------------
+      # Application
+      # -----------------------------------------------------------------------
+      APP_PORT: ${APP_PORT}
+      APP_MODE: ${APP_MODE}
+      APP_LOGGING_LEVEL: ${APP_LOGGING_LEVEL}
+
+      # -----------------------------------------------------------------------
+      # Authentication
+      # -----------------------------------------------------------------------
+      APP_JWT_SECRET: ${APP_JWT_SECRET}
+      APP_JWT_EXPIRY: ${APP_JWT_EXPIRY}
+
+      # -----------------------------------------------------------------------
+      # PostgreSQL
+      # -----------------------------------------------------------------------
+      DB_HOST: ${DB_HOST}
+      DB_PORT: ${DB_PORT}
+      DB_NAME: ${DB_NAME}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+
+      # -----------------------------------------------------------------------
+      # Migrations
+      # -----------------------------------------------------------------------
+      MIGRATIONS_AUTO: ${MIGRATIONS_AUTO}
+      MIGRATION_DB_USER: ${MIGRATION_DB_USER}
+      MIGRATION_DB_PASSWORD: ${MIGRATION_DB_PASSWORD}
+
+      # -----------------------------------------------------------------------
+      # Redis
+      # -----------------------------------------------------------------------
+      REDIS_ADDR: ${REDIS_ADDR}
+      REDIS_PASSWORD: ${REDIS_PASSWORD}
+
     ports:
-      - "8081:8081"
+      - "${APP_PORT}:8081"
+
     depends_on:
       postgres:
         condition: service_healthy
+      redis:
+        condition: service_healthy
+
     networks:
       - taskforge-network
-    restart: unless-stopped
 
-# ===========================================================================
+
+# ============================================================================
 # VOLUMES
-# ===========================================================================
+# ============================================================================
 volumes:
   postgres_data:
     driver: local
+
   redis_data:
     driver: local
 
+
+# ============================================================================
+# NETWORK
+# ============================================================================
 networks:
   taskforge-network:
     driver: bridge
     name: taskforge-network
+
