@@ -12,7 +12,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// RunMigrations применяет SQL миграции через Goose.
+// RunMigrations applies SQL migrations via Goose.
 func RunMigrations(cfg config.DatabaseConfig, migrationsCfg config.MigrationConfig, log zerolog.Logger) error {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
@@ -29,7 +29,7 @@ func RunMigrations(cfg config.DatabaseConfig, migrationsCfg config.MigrationConf
 	}
 	defer db.Close()
 
-	// Перехватываем логи Goose в zerolog
+	// We intercept the Goose log in zerolog.
 	goose.SetLogger(&GooseZerologAdapter{logger: log})
 
 	if err := goose.Up(db, migrationsCfg.Path); err != nil {
@@ -41,7 +41,7 @@ func RunMigrations(cfg config.DatabaseConfig, migrationsCfg config.MigrationConf
 	return nil
 }
 
-// GooseZerologAdapter реализует интерфейс goose.Logger.
+// GooseZerologAdapter implements the goose.Logger interface.
 type GooseZerologAdapter struct {
 	logger zerolog.Logger
 }

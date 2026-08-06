@@ -41,9 +41,9 @@ type Config struct {
 }
 
 type AppConfig struct {
-	Port   string `mapstructure:"port"`
-	Mode   string `mapstructure:"mode"`
-	Secret string `mapstructure:"secret"`
+	Port          string `mapstructure:"port"`
+	Mode          string `mapstructure:"mode"`
+	EncryptionKey string `mapstructure:"encryption_key"`
 }
 
 type DatabaseConfig struct {
@@ -71,7 +71,8 @@ type RedisConfig struct {
 }
 
 type JWTConfig struct {
-	Expiry int `mapstructure:"expiry"`
+	Expiry int    `mapstructure:"expiry"`
+	Secret string `mapstructure:"secret"`
 }
 
 // Load the application configuration.
@@ -93,8 +94,8 @@ func Load() (*Config, error) {
 		return nil, fmt.Errorf("bind APP_MODE: %w", err)
 	}
 
-	if err := v.BindEnv("app.secret", "APP_JWT_SECRET"); err != nil {
-		return nil, fmt.Errorf("bind APP_JWT_SECRET: %w", err)
+	if err := v.BindEnv("app.encryption_key", "APP_ENCRYPTION_KEY"); err != nil {
+		return nil, fmt.Errorf("bind APP_ENCRYPTION_KEY: %w", err)
 	}
 
 	v.SetDefault("app.mode", "release")
@@ -112,6 +113,10 @@ func Load() (*Config, error) {
 	// =========================================================================
 	// JWT
 	// =========================================================================
+
+	if err := v.BindEnv("jwt.secret", "APP_JWT_SECRET"); err != nil {
+		return nil, fmt.Errorf("bind APP_JWT_SECRET: %w", err)
+	}
 
 	if err := v.BindEnv("jwt.expiry", "APP_JWT_EXPIRY"); err != nil {
 		return nil, fmt.Errorf("bind APP_JWT_EXPIRY: %w", err)
@@ -215,17 +220,17 @@ func (c *Config) Validate() ValidationReport {
 		}
 	}
 
-	if strings.TrimSpace(c.App.Secret) == "" {
+	if strings.TrimSpace(c.App.EncryptionKey) == "" {
 		report.Errors = append(report.Errors, ValidationError{
 			Severity: SeverityFatal,
-			Field:    "app.secret",
-			Message:  "APP_JWT_SECRET is required",
+			Field:    "app.encryption_key",
+			Message:  "APP_ENCRYPTION_KEY is required",
 		})
-	} else if len(c.App.Secret) < 32 {
+	} else if len(c.App.EncryptionKey) < 32 {
 		report.Errors = append(report.Errors, ValidationError{
 			Severity: SeverityWarning,
-			Field:    "app.secret",
-			Message:  "APP_JWT_SECRET is shorter than recommended (minimum 32 characters)",
+			Field:    "app.encryption_key",
+			Message:  "APP_ENCRYPTION_KEY is shorter than recommended (minimum 32 characters)",
 		})
 	}
 
@@ -268,6 +273,20 @@ func (c *Config) Validate() ValidationReport {
 	// =========================================================================
 	// JWT
 	// =========================================================================
+
+	if strings.TrimSpace(c.JWT.Secret) == "" {
+		report.Errors = append(report.Errors, ValidationError{
+			Severity: SeverityFatal,
+			Field:    "jwt.secret",
+			Message:  "APP_JWT_SECRET is required",
+		})
+	} else if len(c.JWT.Secret) < 32 {
+		report.Errors = append(report.Errors, ValidationError{
+			Severity: SeverityWarning,
+			Field:    "jwt.secret",
+			Message:  "APP_JWT_SECRET is shorter than recommended (minimum 32 characters)",
+		})
+	}
 
 	if c.JWT.Expiry <= 0 {
 		report.Errors = append(report.Errors, ValidationError{

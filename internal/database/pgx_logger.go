@@ -31,7 +31,7 @@ func (l *PgxZerologAdapter) Log(ctx context.Context, level tracelog.LogLevel, ms
 		event = l.logger.Debug()
 	}
 
-	// Добавляем контекст SQL запроса (сам запрос, время, количество затронутых строк)
+	// Adding the context of the SQL query (the query itself, the time, the number of affected rows)
 	if len(data) > 0 {
 		for k, v := range data {
 			event = event.Interface(k, v)

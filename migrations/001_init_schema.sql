@@ -253,8 +253,18 @@ CREATE INDEX idx_task_history_task_time
 CREATE INDEX idx_task_comments_task_time
     ON task_comments(task_id, created_at ASC);
 
--- +goose StatementEnd
+-- ============================================================
+-- PERMISSIONS
+-- ============================================================
 
+  GRANT USAGE ON SCHEMA public
+      TO taskforge_app;
+    
+  GRANT SELECT, INSERT, UPDATE, DELETE
+      ON ALL TABLES IN SCHEMA public
+      TO taskforge_app;
+
+-- +goose StatementEnd
 
 -- ============================================================
 -- DOWN

@@ -13,7 +13,7 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// OpenPostgres создает пул соединений с PostgreSQL.
+// OpenPostgres creates a connection pool with PostgreSQL.
 func OpenPostgres(ctx context.Context, cfg config.DatabaseConfig, mode string, log zerolog.Logger) (*pgxpool.Pool, error) {
 	dsn := fmt.Sprintf(
 		"postgres://%s:%s@%s:%d/%s?sslmode=disable",
@@ -29,14 +29,13 @@ func OpenPostgres(ctx context.Context, cfg config.DatabaseConfig, mode string, l
 		return nil, fmt.Errorf("parse pgxpool config: %w", err)
 	}
 
-	// Настройки Connection Pooling
 	poolCfg.MaxConns = 25
 	poolCfg.MinConns = 2
 	poolCfg.MaxConnLifetime = 30 * time.Minute
 	poolCfg.MaxConnIdleTime = 5 * time.Minute
 	poolCfg.HealthCheckPeriod = 1 * time.Minute
 
-	// Интеграция логгера pgx с zerolog
+	// Integration of the pgx logger with zerolog
 	poolCfg.ConnConfig.Tracer = &tracelog.TraceLog{
 		Logger:   &PgxZerologAdapter{logger: log},
 		LogLevel: mapPgxLogLevel(mode),
@@ -47,7 +46,6 @@ func OpenPostgres(ctx context.Context, cfg config.DatabaseConfig, mode string, l
 		return nil, fmt.Errorf("failed to create pgxpool: %w", err)
 	}
 
-	// Проверяем реальное соединение с БД
 	if err := pool.Ping(ctx); err != nil {
 		pool.Close()
 		return nil, fmt.Errorf("failed to ping postgres: %w", err)
