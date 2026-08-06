@@ -19,6 +19,28 @@ const (
 	ValidationScopeRegister ValidationScope = "register"
 )
 
+// Rate Limit Constants — Registration
+const (
+	// Maximum number of registrations from a single IP within a time window
+	regIPRateLimit = 10
+	regIPWindow    = 2 * time.Minute
+
+	// Maximum registrations per email within a time window
+	regEmailRateLimit = 5
+	regEmailWindow    = 5 * time.Minute
+)
+
+// Rate Limit Constants — Login
+const (
+	// Maximum login attempts from one IP address within a time window
+	loginIPRateLimit = 10
+	loginIPWindow    = 30 * time.Minute
+
+	// Maximum login attempts per email within a time window
+	loginEmailRateLimit = 5
+	loginEmailWindow    = 15 * time.Minute
+)
+
 // ValidationErrorResponse formats validation errors into a structured response.
 func ValidationErrorResponse(
 	err error,
@@ -118,9 +140,8 @@ func (h *AuthHandler) rateLimitEmail(email string) string {
 	return "rl:auth:email:" + utils.HashIdentifierWithKey(email, h.encryptionKey)
 }
 
-// enforceRateLimit checks rate limiting for registration.
-// Limits: 10 requests from an IP address within 2 minutes, 5 requests per email address within 5 minutes.
-func (h *AuthHandler) enforceRateLimit(c *gin.Context, email string) bool {
+// enforceRegisterRateLimit checks rate limiting for registration.
+func (h *AuthHandler) enforceRegisterRateLimit(c *gin.Context, email string) bool {
 	ctx := c.Request.Context()
 	ip := c.ClientIP()
 	normalizedEmail := strings.ToLower(email)
@@ -129,8 +150,8 @@ func (h *AuthHandler) enforceRateLimit(c *gin.Context, email string) bool {
 	allowed, err := h.cacheService.Allow(
 		ctx,
 		h.rateLimitIP(ip),
-		10,
-		2*time.Minute,
+		regIPRateLimit,
+		regIPWindow,
 	)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Rate limit check failed (Redis down?), failing OPEN")
@@ -152,8 +173,8 @@ func (h *AuthHandler) enforceRateLimit(c *gin.Context, email string) bool {
 	allowed, err = h.cacheService.Allow(
 		ctx,
 		h.rateLimitEmail(normalizedEmail),
-		5,
-		5*time.Minute,
+		regEmailRateLimit,
+		regEmailWindow,
 	)
 	if err != nil {
 		h.logger.Error().
@@ -180,7 +201,6 @@ func (h *AuthHandler) enforceRateLimit(c *gin.Context, email string) bool {
 }
 
 // enforceLoginRateLimit checks rate limiting for login.
-// Limits: 10 attempts per IP per 30 minutes, 5 attempts per email per 15 minutes.
 func (h *AuthHandler) enforceLoginRateLimit(c *gin.Context, email string) bool {
 	ctx := c.Request.Context()
 	ip := c.ClientIP()
@@ -188,7 +208,12 @@ func (h *AuthHandler) enforceLoginRateLimit(c *gin.Context, email string) bool {
 
 	// IP Limit: protection against brute‑force attacks from a single IP address
 	ipKey := "rl:login:ip:" + ip
-	allowed, err := h.cacheService.Allow(ctx, ipKey, 10, 30*time.Minute)
+	allowed, err := h.cacheService.Allow(
+		ctx,
+		ipKey,
+		loginIPRateLimit,
+		loginIPWindow,
+	)
 	if err != nil {
 		h.logger.Error().Err(err).Msg("Login rate limit check failed (Redis down?), failing OPEN")
 		return true
@@ -206,7 +231,13 @@ func (h *AuthHandler) enforceLoginRateLimit(c *gin.Context, email string) bool {
 
 	// Email Limit: protection against password guessing for a specific account
 	emailKey := "rl:login:email:" + utils.HashIdentifierWithKey(normalizedEmail, h.encryptionKey)
-	allowed, err = h.cacheService.Allow(ctx, emailKey, 5, 15*time.Minute)
+	allowed, err = h.cacheService.Allow(
+		ctx,
+		emailKey,
+		loginEmailRateLimit,
+		loginEmailWindow,
+	)
+	
 	if err != nil {
 		h.logger.Error().
 			Err(err).

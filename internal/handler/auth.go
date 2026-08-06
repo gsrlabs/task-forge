@@ -65,7 +65,7 @@ func (h *AuthHandler) Register(c *gin.Context) {
 	}
 
 	if h.appMode != "debug" && h.appMode != "development" {
-		if !h.enforceRateLimit(c, req.Email) {
+		if !h.enforceRegisterRateLimit(c, req.Email) {
 			return
 		}
 	}

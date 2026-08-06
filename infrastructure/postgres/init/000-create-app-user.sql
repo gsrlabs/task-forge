@@ -1,4 +1,4 @@
--- 00-create-app-user.sql
+-- 000-create-app-user.sql
 
 DO $$
 BEGIN

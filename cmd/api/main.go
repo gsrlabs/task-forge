@@ -17,6 +17,7 @@ import (
 	"task-forge/internal/validator"
 	"time"
 
+	//"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
@@ -129,9 +130,17 @@ func run(ctx context.Context) error {
 	handlers.RegisterRoutes(router)
 	log.Info().Msg("Routes registered")
 
+	// Swagger UI (only in development mode)
+	swagger := router.Group("/swagger")
+	{
+		swagger.GET("/", gin.WrapH(http.HandlerFunc(handler.SwaggerUI)))
+		swagger.GET("/swagger.yaml", gin.WrapH(http.HandlerFunc(handler.SwaggerYAML)))
+	}
+	log.Info().Str("url", "http://localhost:"+cfg.App.Port+"/swagger/").Msg("Swagger UI enabled")
+
 	// HTTP server
 	server := &http.Server{
-		Addr: ":" + cfg.App.Port,
+		Addr:    ":" + cfg.App.Port,
 		Handler: router,
 	}
 
