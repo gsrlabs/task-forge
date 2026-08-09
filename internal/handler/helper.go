@@ -4,12 +4,15 @@ import (
 	"net/http"
 	"strings"
 	"time"
+	"github.com/google/uuid"
 
 	"task-forge/internal/dto"
+	"task-forge/internal/middleware"
 	"task-forge/internal/utils"
 
 	"github.com/gin-gonic/gin"
 	"github.com/go-playground/validator/v10"
+	"github.com/rs/zerolog"
 )
 
 type ValidationScope string
@@ -237,7 +240,7 @@ func (h *AuthHandler) enforceLoginRateLimit(c *gin.Context, email string) bool {
 		loginEmailRateLimit,
 		loginEmailWindow,
 	)
-	
+
 	if err != nil {
 		h.logger.Error().
 			Err(err).
@@ -261,4 +264,25 @@ func (h *AuthHandler) enforceLoginRateLimit(c *gin.Context, email string) bool {
 	}
 
 	return true
+}
+
+func getAuthenticatedUserID(
+	c *gin.Context,
+	logger zerolog.Logger,
+) (uuid.UUID, bool) {
+	userID, err := middleware.GetUserID(c)
+	if err == nil {
+		return userID, true
+	}
+
+	logger.Error().
+		Err(err).
+		Msg("Failed to get authenticated user ID")
+
+	c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+		Error:   "internal server error",
+		Details: "failed to extract user identity",
+	})
+
+	return uuid.Nil, false
 }

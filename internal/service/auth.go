@@ -23,7 +23,7 @@ type authService struct {
 	logger     zerolog.Logger
 }
 
-// NewAuthService создает экземпляр AuthService.
+// NewAuthService creates an instance of AuthService.
 func NewAuthService(
 	userRepo repository.UserRepository,
 	jwtManager *JWTManager,
@@ -38,7 +38,7 @@ func NewAuthService(
 
 // Register registers a new user.
 func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (uuid.UUID, error) {
-	// Проверяем, существует ли пользователь с таким email
+	// Checking if there is a user with this email address
 	existingUser, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil && !errors.Is(err, repository.ErrUserNotFound) {
 		s.logger.Error().Err(err).Str("email", req.Email).Msg("Failed to check existing user")
@@ -50,14 +50,14 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (u
 		return uuid.Nil, ErrUserAlreadyExists
 	}
 
-	// Хешируем пароль
+	// Hashing the password
 	passwordHash, err := bcrypt.GenerateFromPassword([]byte(req.Password), bcryptCost)
 	if err != nil {
 		s.logger.Error().Err(err).Msg("Failed to hash password")
 		return uuid.Nil, fmt.Errorf("hash password: %w", err)
 	}
 
-	// Создаем пользователя
+	// Creating a user
 	user := &domain.User{
 		Email:        req.Email,
 		PasswordHash: string(passwordHash),
@@ -81,7 +81,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (u
 
 // Login authenticates the user.
 func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.LoginResponse, error) {
-	// Ищем пользователя по email
+	// We are looking for a user by email
 	user, err := s.userRepo.FindByEmail(ctx, req.Email)
 	if err != nil {
 		if errors.Is(err, repository.ErrUserNotFound) {
@@ -92,7 +92,7 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		return nil, fmt.Errorf("find user: %w", err)
 	}
 
-	// Сравниваем пароли
+	// Comparing passwords
 	if err := bcrypt.CompareHashAndPassword([]byte(user.PasswordHash), []byte(req.Password)); err != nil {
 		s.logger.Warn().
 			Str("user_id", user.ID.String()).
@@ -106,7 +106,7 @@ func (s *authService) Login(ctx context.Context, req *dto.LoginRequest) (*dto.Lo
 		Str("email", user.Email).
 		Msg("User logged in successfully")
 
-	// Генерируем JWT токен
+	// Generating a JWT token
 	token, expiresAt, err := s.jwtManager.GenerateToken(user)
 	if err != nil {
 		s.logger.Error().Err(err).Str("user_id", user.ID.String()).Msg("Failed to generate token")

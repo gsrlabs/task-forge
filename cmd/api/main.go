@@ -12,6 +12,7 @@ import (
 	"task-forge/internal/config"
 	"task-forge/internal/database"
 	"task-forge/internal/handler"
+	"task-forge/internal/middleware"
 	"task-forge/internal/repository"
 	"task-forge/internal/service"
 	"task-forge/internal/validator"
@@ -108,11 +109,16 @@ func run(ctx context.Context) error {
 	appValidator := validator.NewValidator()
 	log.Info().Msg("Validator initialized")
 
+	// Middlewares
+	middlewares := middleware.NewMiddlewares(cacheService, jwtManager, log.Logger)
+	log.Info().Msg("Middlewares initialized")
+
 	// Handlers & Router
 	handlers := handler.NewHandlers(
 		services,
 		appValidator,
 		cacheService,
+		jwtManager,
 		int(cfg.JWTExpiration().Seconds()),
 		cfg.App.Mode,
 		cfg.App.EncryptionKey,
@@ -127,10 +133,10 @@ func run(ctx context.Context) error {
 	router.Use(gin.Recovery())
 	router.Use(ginLogger(log.Logger))
 
-	handlers.RegisterRoutes(router)
+	handlers.RegisterRoutes(router, middlewares)
 	log.Info().Msg("Routes registered")
 
-	// Swagger UI (only in development mode)
+	// Swagger UI
 	swagger := router.Group("/swagger")
 	{
 		swagger.GET("/", gin.WrapH(http.HandlerFunc(handler.SwaggerUI)))

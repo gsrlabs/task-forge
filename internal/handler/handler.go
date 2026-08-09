@@ -2,6 +2,7 @@ package handler
 
 import (
 	"task-forge/internal/cache"
+	"task-forge/internal/middleware"
 	"task-forge/internal/service"
 	"task-forge/internal/validator"
 
@@ -9,19 +10,21 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Handlers aggregates all HTTP handlers
+// Handlers агрегирует все HTTP хендлеры.
 type Handlers struct {
-	Auth *AuthHandler
+	Auth  *AuthHandler
+	Teams *TeamsHandler
 }
 
-// NewHandlers creates a container with all handlers.
+// NewHandlers создает контейнер со всеми хендлерами.
 func NewHandlers(
 	services *service.Services,
 	validator *validator.Validator,
 	cacheService *cache.CacheService,
+	jwtManager *service.JWTManager,
 	jwtExpiration int,
 	appMode string,
-	encryptionKey string,
+	appSecret string,
 	logger zerolog.Logger,
 ) *Handlers {
 	return &Handlers{
@@ -31,18 +34,33 @@ func NewHandlers(
 			cacheService,
 			jwtExpiration,
 			appMode,
-			encryptionKey,
+			appSecret,
+			logger,
+		),
+		Teams: NewTeamsHandler(
+			services.Teams,
+			validator,
 			logger,
 		),
 	}
 }
 
 // RegisterRoutes registers all routes in the Gin router.
-func (h *Handlers) RegisterRoutes(router *gin.Engine) {
+func (h *Handlers) RegisterRoutes(router *gin.Engine, middlewares *middleware.Middlewares) {
 	api := router.Group("/api/v1")
 	{
-		// Auth routes
+
+		// Public routes
 		api.POST("/register", h.Auth.Register)
 		api.POST("/login", h.Auth.Login)
+
+		// Protected routes
+		protected := api.Group("")
+		protected.Use(middlewares.Auth.Authenticate())
+		
+		// Teams
+		protected.POST("/teams", h.Teams.Create)
+		protected.GET("/teams", h.Teams.List)
+		protected.POST("/teams/:id/invite", h.Teams.Invite)
 	}
 }
