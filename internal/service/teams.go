@@ -1,3 +1,4 @@
+// internal/service/teams.go
 package service
 
 import (
@@ -39,6 +40,7 @@ func (s *teamService) Create(
 	req *dto.CreateTeamRequest,
 ) (*dto.CreateTeamResponse, error) {
 	team := &domain.Team{
+		ID: uuid.New(),
 		Name: req.Name,
 	}
 

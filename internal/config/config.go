@@ -180,10 +180,6 @@ func Load() (*Config, error) {
 
 	v.SetDefault("redis.addr", "redis:6379")
 
-	// =========================================================================
-	// UNMARSHAL
-	// =========================================================================
-
 	var cfg Config
 
 	if err := v.Unmarshal(&cfg); err != nil {

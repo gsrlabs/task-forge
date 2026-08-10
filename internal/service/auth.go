@@ -1,3 +1,4 @@
+// internal/service/auth.go
 package service
 
 import (
@@ -59,6 +60,7 @@ func (s *authService) Register(ctx context.Context, req *dto.RegisterRequest) (u
 
 	// Creating a user
 	user := &domain.User{
+		ID:           uuid.New(),
 		Email:        req.Email,
 		PasswordHash: string(passwordHash),
 	}

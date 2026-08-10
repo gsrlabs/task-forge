@@ -18,7 +18,6 @@ import (
 	"task-forge/internal/validator"
 	"time"
 
-	//"github.com/gin-contrib/cors"
 	"github.com/gin-gonic/gin"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"

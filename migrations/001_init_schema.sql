@@ -41,7 +41,7 @@ $$ LANGUAGE plpgsql;
 -- ============================================================
 
 CREATE TABLE users (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     email CITEXT NOT NULL UNIQUE,
     password_hash VARCHAR(255) NOT NULL,
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -58,7 +58,7 @@ EXECUTE FUNCTION set_updated_at();
 -- ============================================================
 
 CREATE TABLE teams (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     name VARCHAR(255) NOT NULL,
 
     created_by UUID NOT NULL
@@ -99,7 +99,7 @@ CREATE TABLE team_members (
 -- ============================================================
 
 CREATE TABLE tasks (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
     team_id UUID NOT NULL,
     title VARCHAR(255) NOT NULL,
     description TEXT,
@@ -138,7 +138,7 @@ EXECUTE FUNCTION set_updated_at();
 -- ============================================================
 
 CREATE TABLE task_history (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
 
     task_id UUID NOT NULL
         REFERENCES tasks(id)
@@ -158,7 +158,7 @@ CREATE TABLE task_history (
 -- ============================================================
 
 CREATE TABLE task_comments (
-    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    id UUID PRIMARY KEY,
 
     task_id UUID NOT NULL
         REFERENCES tasks(id)
@@ -194,7 +194,7 @@ CREATE INDEX idx_team_members_user_id
     ON team_members(user_id);
 
 -- ------------------------------------------------------------
--- tasks: основные фильтры
+-- tasks: basic filters
 -- ------------------------------------------------------------
 
 CREATE INDEX idx_tasks_team_status_assignee
@@ -219,7 +219,7 @@ CREATE INDEX idx_tasks_done_updated_team
     WHERE status = 'done';
 
 -- ------------------------------------------------------------
--- tasks: Top-3 пользователей по созданным задачам за месяц
+-- tasks: Top-3 users by created tasks per month
 -- ------------------------------------------------------------
 
 CREATE INDEX idx_tasks_created_at_team_creator

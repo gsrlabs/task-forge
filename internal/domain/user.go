@@ -1,3 +1,4 @@
+// internal/handler/swagger.go
 package domain
 
 import (
