@@ -14,9 +14,6 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// PostgreSQL error code for a violation of the UNIQUE constraint.
-const pgUniqueViolationCode = "23505"
-
 type userRepository struct {
 	db     *pgxpool.Pool
 	logger zerolog.Logger

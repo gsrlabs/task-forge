@@ -42,11 +42,8 @@ $$ LANGUAGE plpgsql;
 
 CREATE TABLE users (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
     email CITEXT NOT NULL UNIQUE,
-
     password_hash VARCHAR(255) NOT NULL,
-
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
@@ -62,7 +59,6 @@ EXECUTE FUNCTION set_updated_at();
 
 CREATE TABLE teams (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
     name VARCHAR(255) NOT NULL,
 
     created_by UUID NOT NULL
@@ -93,7 +89,6 @@ CREATE TABLE team_members (
         ON DELETE RESTRICT,
 
     role team_role NOT NULL DEFAULT 'member',
-
     joined_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
     PRIMARY KEY (team_id, user_id)
@@ -105,19 +100,12 @@ CREATE TABLE team_members (
 
 CREATE TABLE tasks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-
     team_id UUID NOT NULL,
-
     title VARCHAR(255) NOT NULL,
-
     description TEXT,
-
     status task_status NOT NULL DEFAULT 'todo',
-
     assignee_id UUID,
-
     created_by UUID NOT NULL,
-
     created_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -161,9 +149,7 @@ CREATE TABLE task_history (
         ON DELETE RESTRICT,
 
     action task_history_action NOT NULL,
-
     changes JSONB NOT NULL,
-
     changed_at TIMESTAMPTZ NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -259,7 +245,7 @@ CREATE INDEX idx_task_comments_task_time
 
   GRANT USAGE ON SCHEMA public
       TO taskforge_app;
-    
+
   GRANT SELECT, INSERT, UPDATE, DELETE
       ON ALL TABLES IN SCHEMA public
       TO taskforge_app;
