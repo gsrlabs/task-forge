@@ -1,3 +1,4 @@
+// internal/dto/auth.go
 package dto
 
 import (

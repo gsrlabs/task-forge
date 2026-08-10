@@ -1,3 +1,4 @@
+// internal/repository/user.go
 package repository
 
 import (
@@ -34,10 +35,6 @@ func (r *userRepository) Create(ctx context.Context, user *domain.User) error {
 		VALUES ($1, $2, $3)
 		RETURNING created_at, updated_at
 	`
-
-	if user.ID == uuid.Nil {
-		user.ID = uuid.New()
-	}
 
 	err := r.db.QueryRow(ctx, query,
 		user.ID,

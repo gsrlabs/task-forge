@@ -1,3 +1,4 @@
+// internal/repository/errors.go
 package repository
 
 import "errors"
@@ -6,14 +7,15 @@ import "errors"
 const pgUniqueViolationCode = "23505"
 
 var (
+	// User-specific errors
 	ErrUserAlreadyExists = errors.New("user already exists")
 	ErrUserNotFound      = errors.New("user not found")
-	ErrTeamNotFound      = errors.New("team not found")
-	ErrTaskNotFound      = errors.New("task not found")
-	ErrDuplicateEntry    = errors.New("duplicate entry")
 
 	// Team-specific errors
-	ErrTeamMemberNotFound    = errors.New("team member not found")
-	ErrTeamMemberExists      = errors.New("user is already a member of this team")
-	ErrInsufficientPrivilege = errors.New("insufficient privilege")
+	ErrTeamNotFound       = errors.New("team not found")
+	ErrTeamMemberNotFound = errors.New("team member not found")
+	ErrTeamMemberExists   = errors.New("user is already a member of this team")
+
+	// Task-specific errors
+	ErrTaskNotFound = errors.New("task not found")
 )

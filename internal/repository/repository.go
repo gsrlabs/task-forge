@@ -1,3 +1,4 @@
+// internal/repository/repository.go
 package repository
 
 import (
@@ -14,7 +15,7 @@ import (
 type Repositories struct {
 	Users UserRepository
 	Teams TeamRepository
-	// Tasks TaskRepository
+	Tasks TaskRepository
 }
 
 // UserRepository describes a contract for working with users.
@@ -26,24 +27,47 @@ type UserRepository interface {
 
 // TeamRepository describes the contract for working with teams.
 type TeamRepository interface {
-	// Create creates a command and adds the creator as the owner.
 	Create(ctx context.Context, userID uuid.UUID, team *domain.Team) error
-	
-	// FindByID finds a command by ID.
 	FindByID(ctx context.Context, teamID uuid.UUID) (*domain.Team, error)
-	
-	// FindByUserID returns a list of teams where the user is a member.
 	FindByUserID(ctx context.Context, userID uuid.UUID) ([]domain.TeamWithRole, error)
-	
-	// AddMember adds a user to the team with the specified role.
 	AddMember(ctx context.Context, member *domain.TeamMember) error
-	
-	// GetUserRole returns the user’s role in the team.
-	// Returns ErrTeamMemberNotFound if the user is not part of the team.
 	GetUserRole(ctx context.Context, teamID, userID uuid.UUID) (domain.TeamRole, error)
-	
-	// RemoveMember removes a user from the team.
 	RemoveMember(ctx context.Context, teamID, userID uuid.UUID) error
+	IsTeamMember(ctx context.Context, teamID uuid.UUID, userID uuid.UUID,) (bool, error)
+}
+
+// TaskRepository describes a contract for working with tasks.
+type TaskRepository interface {
+	Create(
+		ctx context.Context,
+		task *domain.Task,
+		audit domain.TaskAudit,
+	) error
+
+	FindByID(
+		ctx context.Context,
+		taskID uuid.UUID,
+	) (*domain.Task, error)
+
+	List(
+		ctx context.Context,
+		filter domain.TaskFilter,
+		pagination domain.TaskPagination,
+	) (*domain.TaskListResult, error)
+
+	Update(
+		ctx context.Context,
+		taskID uuid.UUID,
+		changedBy uuid.UUID,
+		update domain.TaskUpdate,
+		audit domain.TaskAudit,
+	) (*domain.Task, error)
+
+	GetHistory(
+		ctx context.Context,
+		taskID uuid.UUID,
+	) ([]domain.TaskHistoryWithUser, error)
+
 }
 
 // NewRepositories creates a container with all repositories.
@@ -51,5 +75,6 @@ func NewRepositories(db *pgxpool.Pool, logger zerolog.Logger) *Repositories {
 	return &Repositories{
 		Users: NewUserRepository(db, logger),
 		Teams: NewTeamRepository(db, logger),
+		Tasks: NewTaskRepository(db, logger),
 	}
 }

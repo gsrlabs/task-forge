@@ -1,3 +1,4 @@
+// internal/repository/teams.go
 package repository
 
 import (
@@ -35,11 +36,6 @@ func (r *teamRepository) Create(ctx context.Context, userID uuid.UUID, team *dom
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer tx.Rollback(ctx)
-
-	// Generate an ID if it hasn’t been set
-	if team.ID == uuid.Nil {
-		team.ID = uuid.New()
-	}
 
 	query := `
 		INSERT INTO teams (id, name, created_by)
@@ -220,4 +216,36 @@ func (r *teamRepository) RemoveMember(ctx context.Context, teamID, userID uuid.U
 		Msg("Team member removed")
 
 	return nil
+}
+
+// IsTeamMember checks whether the relationship exists in PostgreSQL.
+func (r *teamRepository) IsTeamMember(
+	ctx context.Context,
+	teamID uuid.UUID,
+	userID uuid.UUID,
+) (bool, error) {
+	const query = `
+		SELECT EXISTS (
+			SELECT 1
+			FROM team_members
+			WHERE team_id = $1
+				AND user_id = $2
+		)
+	`
+	
+	var exists bool
+
+	if err := r.db.QueryRow(
+		ctx,
+		query,
+		teamID,
+		userID,
+	).Scan(&exists); err != nil {
+		return false, fmt.Errorf(
+			"check team membership: %w",
+			err,
+		)
+	}
+
+	return exists, nil
 }

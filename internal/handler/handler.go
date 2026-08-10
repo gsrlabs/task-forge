@@ -1,3 +1,4 @@
+// internal/handler/handler.go
 package handler
 
 import (
@@ -10,13 +11,13 @@ import (
 	"github.com/rs/zerolog"
 )
 
-// Handlers агрегирует все HTTP хендлеры.
+// Handlers aggregates all HTTP handlers.
 type Handlers struct {
 	Auth  *AuthHandler
 	Teams *TeamsHandler
 }
 
-// NewHandlers создает контейнер со всеми хендлерами.
+// NewHandlers creates a container with all the handlers.
 func NewHandlers(
 	services *service.Services,
 	validator *validator.Validator,

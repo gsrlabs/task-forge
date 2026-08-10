@@ -1,3 +1,4 @@
+// internal/dto/dto.go
 package dto
 
 // MessageResponse standard response with a message.
