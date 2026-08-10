@@ -2,22 +2,27 @@ openapi: 3.0.0
 info:
   title: Task Forge API
   description: |
-    REST API сервис для управления задачами в командах с поддержкой ролевой модели, 
+    REST API сервис для управления задачами в командах с поддержкой ролевой модели,
     истории изменений и сложными SQL-запросами.
-    
+
     **🔐 Аутентификация:**
     - JWT токен передаётся через HttpOnly cookie `jwt`.
     - Cookie устанавливается автоматически при успешном логине.
     - Для защищённых endpoints необходимо отправлять cookie с запросом.
-    
-    **🍪 Cookies:**
-    - `jwt`: JWT токен (HttpOnly, Secure в production, SameSite=Strict)
-    
-    **🛡️ Rate Limiting & Security:**
+
+    *Публичные endpoints (Auth):*
     - **Registration:** Максимум 10 запросов с IP за 2 минуты + 5 запросов на email за 5 минут.
     - **Login:** Максимум 10 попыток с IP за 30 минут + 5 попыток на email за 15 минут.
-    - **PII Protection:** Email хешируется с HMAC-SHA256 перед сохранением в Redis для rate limiting.
-    - **Безопасность логина:** При превышении лимита по email возвращается `401` (маскировка под неверный пароль).
+
+    *Защищённые endpoints (Teams, Tasks):*
+    - **IP Limit:** Максимум 100 запросов с одного IP за 1 минуту (первый эшелон защиты от DDoS).
+    - **User Limit:** Максимум 100 запросов от одного пользователя за 1 минуту (per-user protection).
+    - **Fail-Open:** При недоступности Redis запросы пропускаются, сервис продолжает работать.
+
+    **🔒 PII Protection:**
+    - Email хешируется с HMAC-SHA256 перед сохранением в Redis для rate limiting.
+    - При превышении лимита попыток логина по email возвращается `401` (маскировка под неверный пароль). неверный пароль).
+
   version: 1.0.0
   contact:
     name: Task Forge API Support
@@ -45,12 +50,12 @@ paths:
       summary: Регистрация нового пользователя
       description: |
         Создаёт нового пользователя в системе и возвращает его ID.
-        
+
         **🔐 Требования к паролю:**
         - Длина: 8–72 символа
         - Минимум одна буква (латиница)
         - Валидный email формат (strict_email)
-        
+
         **🛡️ Rate Limiting:**
         - Максимум 10 регистраций с одного IP за 2 минуты
         - Максимум 5 регистраций на один email за 5 минут
@@ -60,7 +65,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/RegisterRequest'
+              $ref: "#/components/schemas/RegisterRequest"
             examples:
               example_success:
                 summary: Успешная регистрация
@@ -68,21 +73,21 @@ paths:
                   email: "user@example.com"
                   password: "StrongPass123"
       responses:
-        '201':
+        "201":
           description: Пользователь успешно зарегистрирован
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/RegisterResponse'
+                $ref: "#/components/schemas/RegisterResponse"
               example:
                 user_id: "550e8400-e29b-41d4-a716-446655440000"
                 message: "registration successful"
-        '400':
+        "400":
           description: Неверный запрос (ошибка валидации)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 invalid_request_body:
                   summary: Недопустимое тело запроса
@@ -118,20 +123,20 @@ paths:
                   value:
                     error: "validation failed"
                     details: "password is required"
-        '409':
+        "409":
           description: Конфликт — пользователь с таким email уже существует
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "user already exists"
-        '429':
+        "429":
           description: Превышен лимит запросов (rate limit)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 too_many_requests_ip:
                   summary: Превышен лимит с IP
@@ -141,12 +146,12 @@ paths:
                   summary: Превышен лимит на email
                   value:
                     error: "too many registration attempts for this email"
-        '500':
+        "500":
           description: Внутренняя ошибка сервера
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               example:
                 error: "registration failed"
 
@@ -156,15 +161,15 @@ paths:
       summary: Аутентификация пользователя
       description: |
         Аутентифицирует пользователя по email и паролю.
-        
+
         **🍪 При успехе устанавливается cookie:**
         - `jwt`: JWT токен (HttpOnly, Secure в production, SameSite=Strict)
-        
+
         **🔐 Безопасность:**
         - Не раскрывает, существует ли пользователь с данным email.
         - Единая ошибка "invalid email or password" для неверного email и неверного пароля.
         - При превышении лимита попыток по email возвращается `401` (маскировка).
-        
+
         **🛡️ Rate Limiting:**
         - Максимум 10 попыток входа с одного IP за 30 минут
         - Максимум 5 попыток подбора пароля на один email за 15 минут
@@ -174,7 +179,7 @@ paths:
         content:
           application/json:
             schema:
-              $ref: '#/components/schemas/LoginRequest'
+              $ref: "#/components/schemas/LoginRequest"
             examples:
               example_success:
                 summary: Успешный вход
@@ -182,7 +187,7 @@ paths:
                   email: "user@example.com"
                   password: "StrongPass123"
       responses:
-        '200':
+        "200":
           description: Успешный вход
           headers:
             Set-Cookie:
@@ -193,15 +198,15 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/MessageResponse'
+                $ref: "#/components/schemas/MessageResponse"
               example:
                 message: "login successful"
-        '400':
+        "400":
           description: Неверный запрос (ошибка валидации)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 invalid_request_body:
                   summary: Недопустимое тело запроса
@@ -232,12 +237,12 @@ paths:
                   value:
                     error: "validation failed"
                     details: "password is too long (maximum 72 characters)"
-        '401':
+        "401":
           description: Неверные учётные данные или превышен лимит попыток (маскировка)
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/ErrorResponse'
+                $ref: "#/components/schemas/ErrorResponse"
               examples:
                 invalid_credentials:
                   summary: Неверный email или пароль
@@ -247,22 +252,353 @@ paths:
                   summary: Превышен лимит попыток (маскируется под неверный пароль)
                   value:
                     error: "invalid email or password"
-        '429':
+        "429":
           description: Превышен глобальный лимит запросов с IP-адреса
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "too many login attempts from your network"
+        "500":
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+              example:
+                error: "login failed"
+
+  # ========== TEAMS ==========
+  /api/v1/teams:
+    post:
+      tags: [Teams]
+      summary: Создание новой команды
+      description: |
+        Создаёт новую команду. Текущий аутентифицированный пользователь 
+        автоматически становится **owner** (владельцем) команды.
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        - Название команды: 1–255 символов
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: createTeam
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTeamRequest'
+            examples:
+              example_success:
+                summary: Создание команды
+                value:
+                  name: "Engineering Team"
+      responses:
+        '201':
+          description: Команда успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CreateTeamResponse'
+              example:
+                team_id: "550e8400-e29b-41d4-a716-446655440000"
+                name: "Engineering Team"
+                role: "owner"
+        '400':
+          description: Неверный запрос (ошибка валидации)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_request_body:
+                  summary: Недопустимое тело запроса
+                  value:
+                    error: "invalid request body"
+                validation_failed:
+                  summary: Ошибка валидации названия
+                  value:
+                    error: "validation failed"
+                    details: "team name is required and must be between 1 and 255 characters"
+        '401':
+          description: Не авторизован (отсутствует или невалидный JWT)
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
               example:
-                error: "too many login attempts from your network"
+                error: "unauthorized"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                ip_rate_limit:
+                  summary: Превышен IP лимит (100 req/min)
+                  value:
+                    error: "too many requests, please slow down"
+                user_rate_limit:
+                  summary: Превышен User лимит (100 req/min)
+                  value:
+                    error: "too many requests, please slow down"
         '500':
           description: Внутренняя ошибка сервера
           content:
             application/json:
               schema:
                 $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                create_failed:
+                  summary: Ошибка создания команды
+                  value:
+                    error: "failed to create team"
+                identity_extraction_failed:
+                  summary: Ошибка извлечения userID из контекста
+                  value:
+                    error: "internal server error"
+                    details: "failed to extract user identity"
+
+    get:
+      tags: [Teams]
+      summary: Получение списка команд пользователя
+      description: |
+        Возвращает список всех команд, в которых состоит текущий аутентифицированный пользователь,
+        вместе с его ролью в каждой команде.
+        
+        Команды отсортированы по дате создания (новые первые).
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: listTeams
+      security:
+        - CookieAuth: []
+      responses:
+        '200':
+          description: Список команд успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamListResponse'
+              examples:
+                with_teams:
+                  summary: Пользователь состоит в командах
+                  value:
+                    teams:
+                      - id: "550e8400-e29b-41d4-a716-446655440000"
+                        name: "Engineering Team"
+                        role: "owner"
+                        created_at: "2026-08-09T10:30:00Z"
+                      - id: "660e8400-e29b-41d4-a716-446655440001"
+                        name: "Marketing Team"
+                        role: "member"
+                        created_at: "2026-08-07T15:20:00Z"
+                    count: 2
+                empty:
+                  summary: Пользователь не состоит ни в одной команде
+                  value:
+                    teams: []
+                    count: 0
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
               example:
-                error: "login failed"
+                error: "unauthorized"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                list_failed:
+                  summary: Ошибка получения списка
+                  value:
+                    error: "failed to list teams"
+                identity_extraction_failed:
+                  summary: Ошибка извлечения userID
+                  value:
+                    error: "internal server error"
+                    details: "failed to extract user identity"
+
+  /api/v1/teams/{id}/invite:
+    post:
+      tags: [Teams]
+      summary: Приглашение пользователя в команду
+      description: |
+        Приглашает существующего пользователя в команду с указанной ролью.
+        
+        **🔐 Требования к правам:**
+        - Только пользователи с ролью **owner** или **admin** могут приглашать новых участников
+        - Нельзя пригласить с ролью `owner` (это привилегия создателя команды)
+        - Нельзя пригласить самого себя
+        
+        **📋 Проверки:**
+        1. Существование команды
+        2. Права инициатора (owner/admin)
+        3. Существование приглашаемого пользователя по email
+        4. Self-invite блокировка
+        5. Валидность роли (`admin` или `member`)
+        6. Отсутствие пользователя в команде (дубликат)
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: inviteUser
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID команды, в которую приглашается пользователь
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/InviteUserRequest'
+            examples:
+              invite_member:
+                summary: Приглашение как обычного участника
+                value:
+                  email: "colleague@example.com"
+                  role: "member"
+              invite_admin:
+                summary: Приглашение как администратора
+                value:
+                  email: "lead@example.com"
+                  role: "admin"
+      responses:
+        '200':
+          description: Пользователь успешно приглашён
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteUserResponse'
+              example:
+                message: "user invited successfully"
+                team_id: "550e8400-e29b-41d4-a716-446655440000"
+                user_id: "770e8400-e29b-41d4-a716-446655440002"
+                role: "member"
+        '400':
+          description: Неверный запрос (валидация, роль, self-invite)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_request_body:
+                  summary: Недопустимое тело запроса
+                  value:
+                    error: "invalid request body"
+                invalid_team_id:
+                  summary: Невалидный UUID команды в path
+                  value:
+                    error: "invalid team ID"
+                    details: "team ID must be a valid UUID"
+                validation_failed:
+                  summary: Ошибка валидации полей
+                  value:
+                    error: "validation failed"
+                    details: "email and role are required, role must be 'admin' or 'member'"
+                invalid_role:
+                  summary: Недопустимая роль (только admin или member)
+                  value:
+                    error: "invalid role"
+                cannot_invite_self:
+                  summary: Попытка пригласить самого себя
+                  value:
+                    error: "cannot invite yourself"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '403':
+          description: Недостаточно прав (только owner/admin могут приглашать)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "insufficient privilege"
+        '404':
+          description: Ресурс не найден
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                team_not_found:
+                  summary: Команда не найдена
+                  value:
+                    error: "team not found"
+                user_not_found:
+                  summary: Приглашаемый пользователь не существует
+                  value:
+                    error: "user not found"
+        '409':
+          description: Конфликт — пользователь уже состоит в команде
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "user is already a member of this team"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invite_failed:
+                  summary: Ошибка приглашения
+                  value:
+                    error: "failed to invite user"
+                identity_extraction_failed:
+                  summary: Ошибка извлечения userID
+                  value:
+                    error: "internal server error"
+                    details: "failed to extract user identity"
 
 # ========== COMPONENTS ==========
 components:
@@ -274,7 +610,7 @@ components:
       name: jwt
       description: |
         JWT токен в HttpOnly cookie.
-        
+
         Cookie устанавливается автоматически при успешном логине.
         Для защищённых endpoints браузер отправляет cookie автоматически.
 
@@ -357,3 +693,123 @@ components:
           example: "registration successful"
           description: Сообщение о результате
       description: Ответ на успешную регистрацию
+
+    # ==== TEAMS: REQUESTS ====
+    CreateTeamRequest:
+      type: object
+      required: [name]
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Engineering Team"
+          description: Название команды (1-255 символов)
+      description: Данные для создания новой команды
+
+    InviteUserRequest:
+      type: object
+      required: [email, role]
+      properties:
+        email:
+          type: string
+          format: email
+          example: "colleague@example.com"
+          description: Email приглашаемого пользователя (должен быть зарегистрирован)
+        role:
+          type: string
+          enum: [admin, member]
+          example: "member"
+          description: |
+            Роль приглашаемого в команде:
+            - `admin` — администратор (может приглашать других)
+            - `member` — обычный участник
+            
+            ⚠️ Роль `owner` нельзя назначить через invite — это привилегия создателя
+      description: Данные для приглашения пользователя в команду
+
+    # ==== TEAMS: RESPONSES ====
+    CreateTeamResponse:
+      type: object
+      required: [team_id, name, role]
+      properties:
+        team_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID созданной команды
+        name:
+          type: string
+          example: "Engineering Team"
+          description: Название команды
+        role:
+          type: string
+          enum: [owner]
+          example: "owner"
+          description: Роль текущего пользователя в команде (всегда owner при создании)
+      description: Ответ на успешное создание команды
+
+    TeamListItem:
+      type: object
+      required: [id, name, role, created_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID команды
+        name:
+          type: string
+          example: "Engineering Team"
+          description: Название команды
+        role:
+          type: string
+          enum: [owner, admin, member]
+          example: "owner"
+          description: Роль текущего пользователя в этой команде
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-08-09T10:30:00Z"
+          description: Дата создания команды (ISO 8601)
+      description: Элемент списка команд с ролью пользователя
+
+    TeamListResponse:
+      type: object
+      required: [teams, count]
+      properties:
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamListItem'
+          description: Список команд пользователя
+        count:
+          type: integer
+          example: 2
+          description: Количество команд в списке
+      description: Ответ со списком команд пользователя
+
+    InviteUserResponse:
+      type: object
+      required: [message, team_id, user_id, role]
+      properties:
+        message:
+          type: string
+          example: "user invited successfully"
+          description: Сообщение о результате
+        team_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID команды
+        user_id:
+          type: string
+          format: uuid
+          example: "770e8400-e29b-41d4-a716-446655440002"
+          description: UUID приглашённого пользователя
+        role:
+          type: string
+          enum: [admin, member]
+          example: "member"
+          description: Назначенная роль
+      description: Ответ на успешное приглашение пользователя
