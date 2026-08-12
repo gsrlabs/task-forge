@@ -85,10 +85,10 @@ type TaskHistoryWithUser struct {
 // The service is responsible for deciding which fields are allowed to change.
 // The repository only persists this already-validated command.
 type TaskUpdate struct {
-	Title       *string
-	TitleSet    bool
+	Title    *string
+	TitleSet bool
 
-	Description *string
+	Description    *string
 	DescriptionSet bool
 
 	Status    *TaskStatus
@@ -98,17 +98,6 @@ type TaskUpdate struct {
 	AssigneeIDSet bool
 }
 
-// ============================================================================
-// Audit
-// ============================================================================
-
-// TaskAudit contains already prepared audit information.
-// The service decides what changed and what should be recorded.
-// The repository only persists it atomically with the task update.
-type TaskAudit struct {
-	Action  TaskHistoryAction
-	Changes json.RawMessage
-}
 
 // ============================================================================
 // Filter & Pagination
@@ -148,4 +137,3 @@ func (u TaskUpdate) HasChanges() bool {
 		u.StatusSet ||
 		u.AssigneeIDSet
 }
-

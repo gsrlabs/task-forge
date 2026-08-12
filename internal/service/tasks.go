@@ -102,12 +102,15 @@ func (s *taskService) Create(
 		return nil, fmt.Errorf("marshal task creation audit: %w", err)
 	}
 
-	audit := domain.TaskAudit{
-		Action:  domain.TaskHistoryActionCreated,
-		Changes: auditChanges,
+	history := domain.TaskHistory{
+    ID:        uuid.New(),
+    TaskID:    task.ID,
+    ChangedBy: userID,
+    Action:    domain.TaskHistoryActionCreated,
+    Changes:   auditChanges,
 	}
 
-	if err := s.taskRepo.Create(ctx, task, audit); err != nil {
+	if err := s.taskRepo.Create(ctx, task, history); err != nil {
 		s.logger.Error().
 			Err(err).
 			Str("user_id", userID.String()).
@@ -366,9 +369,12 @@ func (s *taskService) Update(
 		return nil, fmt.Errorf("marshal task audit: %w", err)
 	}
 
-	audit := domain.TaskAudit{
-		Action:  domain.TaskHistoryActionUpdated,
-		Changes: auditChanges,
+	history := domain.TaskHistory{
+    ID:        uuid.New(),
+    TaskID:    task.ID,
+    ChangedBy: userID,
+    Action:    domain.TaskHistoryActionUpdated,
+    Changes:   auditChanges,
 	}
 
 	updatedTask, err := s.taskRepo.Update(
@@ -376,7 +382,7 @@ func (s *taskService) Update(
 		taskID,
 		userID,
 		update,
-		audit,
+		history,
 	)
 	if err != nil {
 		if errors.Is(err, repository.ErrTaskNotFound) {

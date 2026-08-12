@@ -15,6 +15,7 @@ import (
 type Handlers struct {
 	Auth  *AuthHandler
 	Teams *TeamsHandler
+	Tasks *TasksHandler
 }
 
 // NewHandlers creates a container with all the handlers.
@@ -43,6 +44,11 @@ func NewHandlers(
 			validator,
 			logger,
 		),
+		Tasks: NewTasksHandler(
+			services.Tasks,
+			validator,
+			logger,
+		),
 	}
 }
 
@@ -63,5 +69,11 @@ func (h *Handlers) RegisterRoutes(router *gin.Engine, middlewares *middleware.Mi
 		protected.POST("/teams", h.Teams.Create)
 		protected.GET("/teams", h.Teams.List)
 		protected.POST("/teams/:id/invite", h.Teams.Invite)
+
+		// Tasks
+		protected.POST("/tasks", h.Tasks.Create)
+		protected.GET("/tasks", h.Tasks.List)
+		protected.PUT("/tasks/:id", h.Tasks.Update)
+		protected.GET("/tasks/:id/history", h.Tasks.GetHistory)
 	}
 }

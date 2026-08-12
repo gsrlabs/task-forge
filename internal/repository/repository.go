@@ -41,7 +41,7 @@ type TaskRepository interface {
 	Create(
 		ctx context.Context,
 		task *domain.Task,
-		audit domain.TaskAudit,
+		history domain.TaskHistory,
 	) error
 
 	FindByID(
@@ -60,7 +60,7 @@ type TaskRepository interface {
 		taskID uuid.UUID,
 		changedBy uuid.UUID,
 		update domain.TaskUpdate,
-		audit domain.TaskAudit,
+		history domain.TaskHistory,
 	) (*domain.Task, error)
 
 	GetHistory(
