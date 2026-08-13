@@ -4,9 +4,9 @@ package service
 import (
 	"context"
 
+	"task-forge/internal/cache"
 	"task-forge/internal/dto"
 	"task-forge/internal/repository"
-	"task-forge/internal/cache"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -14,9 +14,10 @@ import (
 
 // Services aggregates all the application’s services.
 type Services struct {
-	Auth  AuthService
-	Teams TeamService
-	Tasks TaskService
+	Auth     AuthService
+	Teams    TeamService
+	Tasks    TaskService
+	Analytics AnalyticsService
 }
 
 // AuthService describes the contract for authentication.
@@ -61,16 +62,21 @@ type TaskService interface {
 	) (*dto.TaskHistoryResponse, error)
 }
 
+// AnalyticsService describes a contract for analytical operations.
+type AnalyticsService interface {
+	GetTeamStats(ctx context.Context, days int) (*dto.TeamStatsResponse, error)
+}
 
 // NewServices creates a container with all the services.
 func NewServices(
-	repos *repository.Repositories, 
-	jwtManager *JWTManager, 
+	repos *repository.Repositories,
+	jwtManager *JWTManager,
 	cacheService *cache.CacheService,
 	logger zerolog.Logger) *Services {
 	return &Services{
-		Auth:  NewAuthService(repos.Users, jwtManager, logger),
-		Teams: NewTeamService(repos.Teams, repos.Users, logger),
-		Tasks: NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
+		Auth:     NewAuthService(repos.Users, jwtManager, logger),
+		Teams:    NewTeamService(repos.Teams, repos.Users, logger),
+		Tasks:    NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
+		Analytics: NewAnalyticsService(repos.Analytics, logger),
 	}
 }
