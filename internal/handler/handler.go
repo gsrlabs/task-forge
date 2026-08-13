@@ -16,6 +16,7 @@ type Handlers struct {
 	Auth  *AuthHandler
 	Teams *TeamsHandler
 	Tasks *TasksHandler
+	Analytics *AnalyticsHandler
 }
 
 // NewHandlers creates a container with all the handlers.
@@ -49,6 +50,10 @@ func NewHandlers(
 			validator,
 			logger,
 		),
+		Analytics: NewAnalyticsHandler(
+			services.Analytics,
+			logger,
+		),
 	}
 }
 
@@ -75,5 +80,9 @@ func (h *Handlers) RegisterRoutes(router *gin.Engine, middlewares *middleware.Mi
 		protected.GET("/tasks", h.Tasks.List)
 		protected.PUT("/tasks/:id", h.Tasks.Update)
 		protected.GET("/tasks/:id/history", h.Tasks.GetHistory)
+
+		// Analytics
+		protected.GET("/analytics/teams/stats", h.Analytics.GetTeamStats)
+		protected.GET("/analytics/teams/top-creators", h.Analytics.GetTopCreators)
 	}
 }

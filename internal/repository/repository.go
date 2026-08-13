@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"task-forge/internal/domain"
 
@@ -16,6 +17,7 @@ type Repositories struct {
 	Users UserRepository
 	Teams TeamRepository
 	Tasks TaskRepository
+	Analytics AnalyticsRepository
 }
 
 // UserRepository describes a contract for working with users.
@@ -70,11 +72,17 @@ type TaskRepository interface {
 
 }
 
+type AnalyticsRepository interface {
+	GetTeamStats(ctx context.Context, days int, sinceDate time.Time) ([]domain.TeamStats, error)
+	GetTopCreators(ctx context.Context, months, topN int) ([]domain.TopCreator, error)
+}
+
 // NewRepositories creates a container with all repositories.
 func NewRepositories(db *pgxpool.Pool, logger zerolog.Logger) *Repositories {
 	return &Repositories{
 		Users: NewUserRepository(db, logger),
 		Teams: NewTeamRepository(db, logger),
 		Tasks: NewTaskRepository(db, logger),
+		Analytics: NewAnalyticsRepository(db, logger),
 	}
 }
