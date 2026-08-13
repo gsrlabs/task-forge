@@ -6,6 +6,7 @@ import (
 
 	"task-forge/internal/dto"
 	"task-forge/internal/repository"
+	"task-forge/internal/cache"
 
 	"github.com/google/uuid"
 	"github.com/rs/zerolog"
@@ -62,10 +63,14 @@ type TaskService interface {
 
 
 // NewServices creates a container with all the services.
-func NewServices(repos *repository.Repositories, jwtManager *JWTManager, logger zerolog.Logger) *Services {
+func NewServices(
+	repos *repository.Repositories, 
+	jwtManager *JWTManager, 
+	cacheService *cache.CacheService,
+	logger zerolog.Logger) *Services {
 	return &Services{
 		Auth:  NewAuthService(repos.Users, jwtManager, logger),
 		Teams: NewTeamService(repos.Teams, repos.Users, logger),
-		Tasks: NewTaskService(repos.Tasks, repos.Teams, logger),
+		Tasks: NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
 	}
 }
