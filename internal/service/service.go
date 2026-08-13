@@ -65,6 +65,8 @@ type TaskService interface {
 // AnalyticsService describes a contract for analytical operations.
 type AnalyticsService interface {
 	GetTeamStats(ctx context.Context, days int) (*dto.TeamStatsResponse, error)
+	GetTopCreators(ctx context.Context, months, topN int) (*dto.TopCreatorsResponse, error)
+
 }
 
 // NewServices creates a container with all the services.

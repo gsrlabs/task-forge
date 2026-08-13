@@ -1,3 +1,4 @@
+//internal/repository/analytics.go
 package repository
 
 import (
@@ -34,10 +35,8 @@ func NewAnalyticsRepository(db *pgxpool.Pool, logger zerolog.Logger) AnalyticsRe
 func (r *analyticsRepository) GetTeamStats(
 	ctx context.Context,
 	days int,
+	sinceDate time.Time,
 ) ([]domain.TeamStats, error) {
-
-	// Calculating the start date of the period
-	sinceDate := time.Now().AddDate(0, 0, -days)
 
 	// Complex SQL query with JOIN 3 tables and aggregation
 	query := `
@@ -120,4 +119,114 @@ func (r *analyticsRepository) GetTeamStats(
 		Msg("Team stats retrieved successfully")
 
 	return stats, nil
+}
+
+// GetTopCreators returns the top N task creators in each team for the last N months.
+//
+// The SQL query uses the RANK() window function to rank:
+// 1. WITH (CTE) — we group tasks by (team_id, user_id) with counting
+// 2. RANK() OVER (PARTITION BY team_id ORDER BY count DESC) — we rank within each team
+// 3. WHERE rank <= topN — we leave only the top-N
+// 4. ORDER BY team_id, rank — stable sorting of the result
+//
+// Uses the index: idx_tasks_created_at_team_creator (created_at, team_id, created_by)
+func (r *analyticsRepository) GetTopCreators(
+	ctx context.Context,
+	months int,
+	topN int,
+) ([]domain.TopCreator, error) {
+
+	// Calculating the start date of the period
+	sinceDate := time.Now().AddDate(0, -months, 0)
+
+	// Complex SQL query with CTE and window function RANK()
+	query := `
+		WITH user_task_counts AS (
+			SELECT
+				t.team_id,
+				team.name AS team_name,
+				t.created_by AS user_id,
+				u.email AS user_email,
+				COUNT(t.id) AS tasks_created,
+				RANK() OVER (
+					PARTITION BY t.team_id
+					ORDER BY COUNT(t.id) DESC, t.created_by ASC
+				) AS rank
+			FROM tasks t
+			INNER JOIN users u
+				ON t.created_by = u.id
+			INNER JOIN teams team
+				ON t.team_id = team.id
+			WHERE t.created_at >= $1
+			GROUP BY
+				t.team_id,
+				team.name,
+				t.created_by,
+				u.email
+		)
+		SELECT
+			team_id,
+			team_name,
+			user_id,
+			user_email,
+			tasks_created,
+			rank
+		FROM user_task_counts
+		WHERE rank <= $2
+		ORDER BY
+			team_name ASC,
+			rank ASC,
+			user_id ASC
+	`
+
+	rows, err := r.db.Query(ctx, query, sinceDate, topN)
+	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Int("months", months).
+			Int("top_n", topN).
+			Time("since_date", sinceDate).
+			Msg("Failed to execute top creators query")
+		return nil, fmt.Errorf("query top creators: %w", err)
+	}
+	defer rows.Close()
+
+	var creators []domain.TopCreator
+	for rows.Next() {
+		var creator domain.TopCreator
+		err := rows.Scan(
+			&creator.TeamID,
+			&creator.TeamName,
+			&creator.UserID,
+			&creator.UserEmail,
+			&creator.TasksCreated,
+			&creator.Rank,
+		)
+		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan top creator row")
+			return nil, fmt.Errorf("scan top creator: %w", err)
+		}
+		creators = append(creators, creator)
+	}
+
+	if err := rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Error iterating top creator rows")
+		return nil, fmt.Errorf("iterate top creators: %w", err)
+	}
+
+	if creators == nil {
+		creators = []domain.TopCreator{}
+	}
+
+	r.logger.Debug().
+		Int("creators_count", len(creators)).
+		Int("months_period", months).
+		Int("top_n", topN).
+		Msg("Top creators retrieved successfully")
+
+	return creators, nil
 }

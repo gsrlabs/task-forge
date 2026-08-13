@@ -3,6 +3,7 @@ package repository
 
 import (
 	"context"
+	"time"
 
 	"task-forge/internal/domain"
 
@@ -72,7 +73,8 @@ type TaskRepository interface {
 }
 
 type AnalyticsRepository interface {
-	GetTeamStats(ctx context.Context, days int) ([]domain.TeamStats, error)
+	GetTeamStats(ctx context.Context, days int, sinceDate time.Time) ([]domain.TeamStats, error)
+	GetTopCreators(ctx context.Context, months, topN int) ([]domain.TopCreator, error)
 }
 
 // NewRepositories creates a container with all repositories.
