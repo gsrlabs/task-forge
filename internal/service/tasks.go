@@ -8,31 +8,36 @@ import (
 	"fmt"
 	"strings"
 
+	"task-forge/internal/cache"
 	"task-forge/internal/domain"
 	"task-forge/internal/dto"
 	"task-forge/internal/repository"
 
 	"github.com/google/uuid"
+	"github.com/redis/go-redis/v9"
 	"github.com/rs/zerolog"
 )
 
 // taskService implements TaskService.
 type taskService struct {
-	taskRepo repository.TaskRepository
-	teamRepo repository.TeamRepository
-	logger   zerolog.Logger
+	taskRepo     repository.TaskRepository
+	teamRepo     repository.TeamRepository
+	cacheService *cache.CacheService
+	logger       zerolog.Logger
 }
 
 // NewTaskService creates an instance of TaskService.
 func NewTaskService(
 	taskRepo repository.TaskRepository,
 	teamRepo repository.TeamRepository,
+	cacheService *cache.CacheService,
 	logger zerolog.Logger,
 ) TaskService {
 	return &taskService{
-		taskRepo: taskRepo,
-		teamRepo: teamRepo,
-		logger:   logger,
+		taskRepo:     taskRepo,
+		teamRepo:     teamRepo,
+		cacheService: cacheService,
+		logger:       logger,
 	}
 }
 
@@ -102,12 +107,15 @@ func (s *taskService) Create(
 		return nil, fmt.Errorf("marshal task creation audit: %w", err)
 	}
 
-	audit := domain.TaskAudit{
-		Action:  domain.TaskHistoryActionCreated,
-		Changes: auditChanges,
+	history := domain.TaskHistory{
+		ID:        uuid.New(),
+		TaskID:    task.ID,
+		ChangedBy: userID,
+		Action:    domain.TaskHistoryActionCreated,
+		Changes:   auditChanges,
 	}
 
-	if err := s.taskRepo.Create(ctx, task, audit); err != nil {
+	if err := s.taskRepo.Create(ctx, task, history); err != nil {
 		s.logger.Error().
 			Err(err).
 			Str("user_id", userID.String()).
@@ -123,6 +131,13 @@ func (s *taskService) Create(
 		Str("team_id", teamID.String()).
 		Str("user_id", userID.String()).
 		Msg("Task created successfully")
+
+	if err := s.cacheService.InvalidateTeamTasks(ctx, task.TeamID.String()); err != nil {
+		s.logger.Warn().
+			Err(err).
+			Str("team_id", task.TeamID.String()).
+			Msg("Failed to invalidate tasks cache after task creation")
+	}
 
 	response := taskToResponse(task)
 
@@ -143,8 +158,49 @@ func (s *taskService) List(
 		return nil, fmt.Errorf("%w: %q", ErrInvalidTeamID, teamID)
 	}
 
+	if limit <= 0 {
+		limit = domain.DefaultTaskPagination().Limit
+	}
+
+	if offset < 0 {
+		return nil, ErrInvalidPagination
+	}
+
+	if limit > 100 {
+		limit = 100
+	}
+
 	if err := s.ensureTeamMember(ctx, parsedTeamID, userID); err != nil {
 		return nil, err
+	}
+
+	// Checking it out Redis.
+	var cachedResponse dto.TaskListResponse
+
+	err = s.cacheService.GetTeamTasks(
+		ctx,
+		teamID,
+		status,
+		assigneeID,
+		limit,
+		offset,
+		&cachedResponse,
+	)
+	if err == nil {
+		s.logger.Debug().
+			Str("team_id", teamID).
+			Str("user_id", userID.String()).
+			Msg("Returning tasks from cache")
+
+		return &cachedResponse, nil
+	}
+
+	if !errors.Is(err, redis.Nil) {
+		// A Redis error should NOT break the API.
+		s.logger.Warn().
+			Err(err).
+			Str("team_id", teamID).
+			Msg("Failed to read tasks from cache")
 	}
 
 	filter := domain.TaskFilter{
@@ -206,6 +262,22 @@ func (s *taskService) List(
 			response.Tasks,
 			taskToResponse(&result.Tasks[i]),
 		)
+	}
+
+	// A Redis write error should not break a successful PostgreSQL response.
+	if err := s.cacheService.SetTeamTasks(
+		ctx,
+		teamID,
+		status,
+		assigneeID,
+		limit,
+		offset,
+		response,
+	); err != nil {
+		s.logger.Warn().
+			Err(err).
+			Str("team_id", teamID).
+			Msg("Failed to cache tasks")
 	}
 
 	return response, nil
@@ -366,9 +438,12 @@ func (s *taskService) Update(
 		return nil, fmt.Errorf("marshal task audit: %w", err)
 	}
 
-	audit := domain.TaskAudit{
-		Action:  domain.TaskHistoryActionUpdated,
-		Changes: auditChanges,
+	history := domain.TaskHistory{
+		ID:        uuid.New(),
+		TaskID:    task.ID,
+		ChangedBy: userID,
+		Action:    domain.TaskHistoryActionUpdated,
+		Changes:   auditChanges,
 	}
 
 	updatedTask, err := s.taskRepo.Update(
@@ -376,7 +451,7 @@ func (s *taskService) Update(
 		taskID,
 		userID,
 		update,
-		audit,
+		history,
 	)
 	if err != nil {
 		if errors.Is(err, repository.ErrTaskNotFound) {
@@ -391,6 +466,16 @@ func (s *taskService) Update(
 		Str("team_id", task.TeamID.String()).
 		Str("user_id", userID.String()).
 		Msg("Task updated successfully")
+
+	if err := s.cacheService.InvalidateTeamTasks(
+		ctx,
+		updatedTask.TeamID.String(),
+	); err != nil {
+		s.logger.Warn().
+			Err(err).
+			Str("team_id", updatedTask.TeamID.String()).
+			Msg("Failed to invalidate tasks cache after task update")
+	}
 
 	response := taskToResponse(updatedTask)
 

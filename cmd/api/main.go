@@ -101,7 +101,12 @@ func run(ctx context.Context) error {
 
 	// Services
 	jwtManager := service.NewJWTManager(cfg.App.EncryptionKey, cfg.JWTExpiration())
-	services := service.NewServices(repos, jwtManager, log.Logger)
+	services := service.NewServices(
+		repos, 
+		jwtManager, 
+		cacheService, 
+		log.Logger,
+	)
 	log.Info().Msg("Services initialized")
 
 	// Validator

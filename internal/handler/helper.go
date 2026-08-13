@@ -2,9 +2,11 @@
 package handler
 
 import (
+	"errors"
 	"net/http"
 	"strings"
 	"time"
+
 	"github.com/google/uuid"
 
 	"task-forge/internal/dto"
@@ -267,23 +269,58 @@ func (h *AuthHandler) enforceLoginRateLimit(c *gin.Context, email string) bool {
 	return true
 }
 
+// getAuthenticatedUserID extracts userID from gin.Context (set by AuthMiddleware).
 func getAuthenticatedUserID(
 	c *gin.Context,
 	logger zerolog.Logger,
 ) (uuid.UUID, bool) {
+	// If the request was already aborted by middleware (401/429), just return false.
+	// The error response was already sent to the client.
+	if c.IsAborted() {
+		return uuid.Nil, false
+	}
+
 	userID, err := middleware.GetUserID(c)
 	if err == nil {
 		return userID, true
 	}
 
+	// Middleware was applied but userID is missing — this is a server configuration error.
+	if errors.Is(err, middleware.ErrUserIDNotInContext) {
+		logger.Error().
+			Err(err).
+			Str("path", c.Request.URL.Path).
+			Msg("Authentication middleware was not applied to this route")
+
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "internal server error",
+			Details: "authentication middleware was not applied",
+		})
+		return uuid.Nil, false
+	}
+
+	// Invalid userID type in context — also a server-side problem.
+	if errors.Is(err, middleware.ErrInvalidUserIDType) {
+		logger.Error().
+			Err(err).
+			Str("path", c.Request.URL.Path).
+			Msg("Invalid user ID type in context")
+
+		c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
+			Error:   "internal server error",
+			Details: "failed to extract user identity",
+		})
+		return uuid.Nil, false
+	}
+
+	// Unexpected error.
 	logger.Error().
 		Err(err).
-		Msg("Failed to get authenticated user ID")
+		Str("path", c.Request.URL.Path).
+		Msg("Unexpected error extracting user ID")
 
 	c.JSON(http.StatusInternalServerError, dto.ErrorResponse{
-		Error:   "internal server error",
-		Details: "failed to extract user identity",
+		Error: "internal server error",
 	})
-
 	return uuid.Nil, false
 }

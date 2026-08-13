@@ -600,6 +600,616 @@ paths:
                     error: "internal server error"
                     details: "failed to extract user identity"
 
+  # ========== TASKS ==========
+  /api/v1/tasks:
+    post:
+      tags: [Tasks]
+      summary: Создание новой задачи
+      description: |
+        Создаёт новую задачу в указанной команде.
+        Текущий пользователь автоматически становится создателем (`created_by`).
+        
+        При создании автоматически записывается событие `created` в историю изменений задачи.
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        - Пользователь должен быть **членом команды** (любая роль: owner/admin/member)
+        - Если указан `assignee_id`, он тоже должен быть членом команды
+        - Название задачи: 1–255 символов
+        - `team_id` обязателен и должен быть валидным UUID
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: createTask
+      security:
+        - CookieAuth: []
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateTaskRequest'
+            examples:
+              minimal:
+                summary: Минимальный запрос (без assignee)
+                value:
+                  team_id: "550e8400-e29b-41d4-a716-446655440000"
+                  title: "Implement user authentication"
+              with_description:
+                summary: С описанием
+                value:
+                  team_id: "550e8400-e29b-41d4-a716-446655440000"
+                  title: "Fix database connection pool"
+                  description: "Connection pool exhausts under high load"
+              full:
+                summary: Полный запрос (с assignee)
+                value:
+                  team_id: "550e8400-e29b-41d4-a716-446655440000"
+                  title: "Fix database connection pool"
+                  description: "Connection pool exhausts under high load"
+                  assignee_id: "770e8400-e29b-41d4-a716-446655440002"
+      responses:
+        '201':
+          description: Задача успешно создана
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+              example:
+                id: "880e8400-e29b-41d4-a716-446655440003"
+                team_id: "550e8400-e29b-41d4-a716-446655440000"
+                title: "Implement user authentication"
+                description: "Add JWT-based authentication"
+                status: "todo"
+                assignee_id: null
+                created_by: "550e8400-e29b-41d4-a716-446655440000"
+                created_at: "2026-08-13T10:30:00.000000000Z"
+                updated_at: "2026-08-13T10:30:00.000000000Z"
+        '400':
+          description: Неверный запрос (валидация, бизнес-правила)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_request_body:
+                  summary: Недопустимое тело запроса
+                  value:
+                    error: "invalid request body"
+                validation_failed:
+                  summary: Ошибка валидации полей
+                  value:
+                    error: "validation failed"
+                    details: "Key: 'CreateTaskRequest.Title' Error:Field validation for 'Title' failed on the 'required' tag"
+                invalid_team_id:
+                  summary: Невалидный team_id
+                  value:
+                    error: "invalid team ID"
+                    details: "invalid team ID: \"not-a-uuid\""
+                invalid_assignee_id:
+                  summary: Невалидный assignee_id
+                  value:
+                    error: "invalid assignee ID"
+                    details: "invalid assignee ID: \"not-a-uuid\""
+                assignee_not_member:
+                  summary: Assignee не является членом команды
+                  value:
+                    error: "assignee must be a member of the team"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '403':
+          description: Пользователь не является членом команды
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "you are not a member of this team"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "internal server error"
+
+    get:
+      tags: [Tasks]
+      summary: Получение списка задач с фильтрацией и пагинацией
+      description: |
+        Возвращает список задач с поддержкой фильтрации по `team_id`, `status`, `assignee_id`
+        и пагинацией через `limit`/`offset`.
+        
+        Результаты отсортированы по дате создания (новые первые).
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        - `team_id` **обязателен** — пользователь должен быть членом запрашиваемой команды
+        - Пользователь не может получить задачи команд, в которых не состоит
+        
+        **📋 Query Parameters:**
+        - `team_id` (required, UUID) — ID команды
+        - `status` (optional) — фильтр по статусу: `todo`, `in_progress`, `review`, `done`
+        - `assignee_id` (optional, UUID) — фильтр по исполнителю
+        - `limit` (optional, default 20, max 100) — количество записей
+        - `offset` (optional, default 0) — смещение
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: listTasks
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: team_id
+          in: query
+          required: true
+          description: UUID команды (обязательный параметр)
+          schema:
+            type: string
+            format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+        - name: status
+          in: query
+          required: false
+          description: Фильтр по статусу задачи
+          schema:
+            type: string
+            enum: [todo, in_progress, review, done]
+          example: "todo"
+        - name: assignee_id
+          in: query
+          required: false
+          description: UUID исполнителя для фильтрации
+          schema:
+            type: string
+            format: uuid
+          example: "770e8400-e29b-41d4-a716-446655440002"
+        - name: limit
+          in: query
+          required: false
+          description: "Количество записей (default: 20, max: 100)"
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+          example: 20
+        - name: offset
+          in: query
+          required: false
+          description: "Смещение (default: 0)"
+          schema:
+            type: integer
+            minimum: 0
+            default: 0
+          example: 0
+      responses:
+        '200':
+          description: Список задач успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskListResponse'
+              examples:
+                with_tasks:
+                  summary: Найдены задачи
+                  value:
+                    tasks:
+                      - id: "880e8400-e29b-41d4-a716-446655440003"
+                        team_id: "550e8400-e29b-41d4-a716-446655440000"
+                        title: "Implement user authentication"
+                        description: "Add JWT-based authentication"
+                        status: "todo"
+                        assignee_id: null
+                        created_by: "550e8400-e29b-41d4-a716-446655440000"
+                        created_at: "2026-08-13T10:30:00.000000000Z"
+                        updated_at: "2026-08-13T10:30:00.000000000Z"
+                      - id: "990e8400-e29b-41d4-a716-446655440004"
+                        team_id: "550e8400-e29b-41d4-a716-446655440000"
+                        title: "Fix database connection pool"
+                        description: "Connection pool exhausts under high load"
+                        status: "in_progress"
+                        assignee_id: "770e8400-e29b-41d4-a716-446655440002"
+                        created_by: "550e8400-e29b-41d4-a716-446655440000"
+                        created_at: "2026-08-13T09:15:00.000000000Z"
+                        updated_at: "2026-08-13T09:15:00.000000000Z"
+                    total: 2
+                    limit: 20
+                    offset: 0
+                empty:
+                  summary: Задач не найдено
+                  value:
+                    tasks: []
+                    total: 0
+                    limit: 20
+                    offset: 0
+        '400':
+          description: Неверный запрос (валидация параметров)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                team_id_required:
+                  summary: Отсутствует team_id
+                  value:
+                    error: "validation failed"
+                    details: "team_id query parameter is required"
+                invalid_team_id:
+                  summary: Невалидный team_id
+                  value:
+                    error: "validation failed"
+                    details: "team_id must be a valid UUID"
+                invalid_assignee_id:
+                  summary: Невалидный assignee_id
+                  value:
+                    error: "validation failed"
+                    details: "assignee_id must be a valid UUID"
+                invalid_status:
+                  summary: Недопустимое значение status
+                  value:
+                    error: "invalid task status"
+                    details: "status must be one of: todo, in_progress, review, done"
+                invalid_limit:
+                  summary: Невалидный limit
+                  value:
+                    error: "validation failed"
+                    details: "limit must be a non-negative integer"
+                invalid_offset:
+                  summary: Невалидный offset
+                  value:
+                    error: "validation failed"
+                    details: "offset must be a non-negative integer"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '403':
+          description: Пользователь не является членом запрашиваемой команды
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "you are not a member of this team"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "internal server error"
+
+  /api/v1/tasks/{id}:
+    put:
+      tags: [Tasks]
+      summary: Обновление задачи
+      description: |
+        Обновляет поля существующей задачи. Можно обновить любое подмножество полей:
+        `title`, `description`, `status`, `assignee_id`.
+        
+        При обновлении автоматически записывается событие `updated` в историю изменений задачи
+        с diff-ом: какие поля изменились (`from`/`to`).
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        - Пользователь должен быть **членом команды** задачи
+        - Хотя бы одно поле должно быть передано (иначе `400 no fields to update`)
+        - Если меняется `assignee_id`, новый исполнитель должен быть членом команды
+        - Пустая строка для `assignee_id` (`""`) — снимает исполнителя (unassign)
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: updateTask
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID обновляемой задачи
+          schema:
+            type: string
+            format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateTaskRequest'
+            examples:
+              update_status:
+                summary: Обновить только статус
+                value:
+                  status: "in_progress"
+              update_multiple:
+                summary: Обновить несколько полей
+                value:
+                  title: "Implement JWT authentication with refresh tokens"
+                  description: "Updated description with more details"
+                  status: "review"
+                  assignee_id: "770e8400-e29b-41d4-a716-446655440002"
+              unassign:
+                summary: Снять исполнителя (unassign)
+                value:
+                  assignee_id: ""
+              change_assignee:
+                summary: Назначить нового исполнителя
+                value:
+                  assignee_id: "770e8400-e29b-41d4-a716-446655440002"
+      responses:
+        '200':
+          description: Задача успешно обновлена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskResponse'
+              example:
+                id: "880e8400-e29b-41d4-a716-446655440003"
+                team_id: "550e8400-e29b-41d4-a716-446655440000"
+                title: "Implement JWT authentication with refresh tokens"
+                description: "Updated description with more details"
+                status: "review"
+                assignee_id: "770e8400-e29b-41d4-a716-446655440002"
+                created_by: "550e8400-e29b-41d4-a716-446655440000"
+                created_at: "2026-08-13T10:30:00.000000000Z"
+                updated_at: "2026-08-13T11:45:00.000000000Z"
+        '400':
+          description: Неверный запрос (валидация, бизнес-правила)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_request_body:
+                  summary: Недопустимое тело запроса
+                  value:
+                    error: "invalid request body"
+                invalid_task_id:
+                  summary: Невалидный UUID задачи в path
+                  value:
+                    error: "invalid task ID"
+                    details: "task ID must be a valid UUID"
+                validation_failed:
+                  summary: Ошибка валидации полей
+                  value:
+                    error: "validation failed"
+                    details: "Key: 'UpdateTaskRequest.Title' Error:Field validation for 'Title' failed on the 'min' tag"
+                no_fields_to_update:
+                  summary: Не передано ни одного поля для обновления
+                  value:
+                    error: "no fields to update"
+                    details: "at least one field must be provided"
+                invalid_status:
+                  summary: Недопустимое значение status
+                  value:
+                    error: "invalid task status"
+                    details: "status must be one of: todo, in_progress, review, done"
+                invalid_assignee_id:
+                  summary: Невалидный assignee_id
+                  value:
+                    error: "invalid assignee ID"
+                    details: "invalid assignee ID: \"not-a-uuid\""
+                assignee_not_member:
+                  summary: Новый assignee не является членом команды
+                  value:
+                    error: "assignee must be a member of the team"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '403':
+          description: Недостаточно прав
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                not_team_member:
+                  summary: Пользователь не член команды задачи
+                  value:
+                    error: "you are not a member of this team"
+                access_denied:
+                  summary: Недостаточно привилегий
+                  value:
+                    error: "insufficient privileges to modify this task"
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "task not found"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "internal server error"
+
+  /api/v1/tasks/{id}/history:
+    get:
+      tags: [Tasks]
+      summary: Получение истории изменений задачи
+      description: |
+        Возвращает полную историю изменений задачи, включая:
+        - Событие создания (`created`) с начальными значениями всех полей
+        - Все события обновления (`updated`) с diff-ом изменённых полей (`from`/`to`)
+        
+        Записи отсортированы по дате изменения (новые первыми).
+        Для каждой записи возвращается email пользователя, внёсшего изменение.
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        - Пользователь должен быть **членом команды** задачи
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: getTaskHistory
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: UUID задачи
+          schema:
+            type: string
+            format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+      responses:
+        '200':
+          description: История успешно получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TaskHistoryResponse'
+              examples:
+                with_history:
+                  summary: Есть изменения (created + updated)
+                  value:
+                    task_id: "880e8400-e29b-41d4-a716-446655440003"
+                    history:
+                      - id: "aa0e8400-e29b-41d4-a716-446655440005"
+                        task_id: "880e8400-e29b-41d4-a716-446655440003"
+                        changed_by: "550e8400-e29b-41d4-a716-446655440000"
+                        changed_by_email: "user@example.com"
+                        action: "updated"
+                        changes:
+                          status:
+                            from: "todo"
+                            to: "in_progress"
+                          assignee_id:
+                            from: null
+                            to: "770e8400-e29b-41d4-a716-446655440002"
+                        changed_at: "2026-08-13T11:45:00.000000000Z"
+                      - id: "bb0e8400-e29b-41d4-a716-446655440006"
+                        task_id: "880e8400-e29b-41d4-a716-446655440003"
+                        changed_by: "550e8400-e29b-41d4-a716-446655440000"
+                        changed_by_email: "user@example.com"
+                        action: "created"
+                        changes:
+                          title: "Implement user authentication"
+                          description: "Add JWT-based authentication"
+                          status: "todo"
+                          assignee_id: null
+                        changed_at: "2026-08-13T10:30:00.000000000Z"
+                    total: 2
+                only_created:
+                  summary: Задача только создана (без обновлений)
+                  value:
+                    task_id: "880e8400-e29b-41d4-a716-446655440003"
+                    history:
+                      - id: "bb0e8400-e29b-41d4-a716-446655440006"
+                        task_id: "880e8400-e29b-41d4-a716-446655440003"
+                        changed_by: "550e8400-e29b-41d4-a716-446655440000"
+                        changed_by_email: "user@example.com"
+                        action: "created"
+                        changes:
+                          title: "Implement user authentication"
+                          description: "Add JWT-based authentication"
+                          status: "todo"
+                          assignee_id: null
+                        changed_at: "2026-08-13T10:30:00.000000000Z"
+                    total: 1
+        '400':
+          description: Невалидный UUID задачи в path
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "invalid task ID"
+                details: "task ID must be a valid UUID"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '403':
+          description: Пользователь не является членом команды задачи
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "you are not a member of this team"
+        '404':
+          description: Задача не найдена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "task not found"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "internal server error"
+
 # ========== COMPONENTS ==========
 components:
   # 🔐 Security Schemes
@@ -813,3 +1423,223 @@ components:
           example: "member"
           description: Назначенная роль
       description: Ответ на успешное приглашение пользователя
+
+    # ==== TASKS: REQUESTS ====
+    CreateTaskRequest:
+      type: object
+      required: [team_id, title]
+      properties:
+        team_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID команды, в которой создаётся задача
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Implement user authentication"
+          description: Название задачи (1-255 символов)
+        description:
+          type: string
+          nullable: true
+          example: "Add JWT-based authentication with refresh tokens"
+          description: Описание задачи (опционально)
+        assignee_id:
+          type: string
+          format: uuid
+          nullable: true
+          example: "770e8400-e29b-41d4-a716-446655440002"
+          description: |
+            UUID исполнителя задачи (опционально).
+            Пользователь должен быть членом команды.
+      description: Данные для создания новой задачи
+
+    UpdateTaskRequest:
+      type: object
+      properties:
+        title:
+          type: string
+          minLength: 1
+          maxLength: 255
+          example: "Implement JWT authentication with refresh tokens"
+          description: Новое название задачи
+        description:
+          type: string
+          nullable: true
+          example: "Updated description with more details"
+          description: Новое описание задачи
+        status:
+          type: string
+          enum: [todo, in_progress, review, done]
+          example: "in_progress"
+          description: |
+            Новый статус задачи:
+            - `todo` — к выполнению
+            - `in_progress` — в работе
+            - `review` — на проверке
+            - `done` — завершена
+        assignee_id:
+          type: string
+          format: uuid
+          nullable: true
+          example: "770e8400-e29b-41d4-a716-446655440002"
+          description: |
+            UUID нового исполнителя.
+            
+            ⚠️ Для снятия исполнителя (unassign) передайте пустую строку `""`.
+            Новый исполнитель должен быть членом команды задачи.
+      description: |
+        Данные для обновления задачи.
+        
+        Все поля опциональны — передаются только те, что нужно изменить.
+        Хотя бы одно поле должно быть передано.
+      example:
+        status: "in_progress"
+        assignee_id: "770e8400-e29b-41d4-a716-446655440002"
+
+    # ==== TASKS: RESPONSES ====
+    TaskResponse:
+      type: object
+      required: [id, team_id, title, status, created_by, created_at, updated_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+          description: UUID задачи
+        team_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID команды, которой принадлежит задача
+        title:
+          type: string
+          example: "Implement user authentication"
+          description: Название задачи
+        description:
+          type: string
+          nullable: true
+          example: "Add JWT-based authentication"
+          description: Описание задачи
+        status:
+          type: string
+          enum: [todo, in_progress, review, done]
+          example: "todo"
+          description: Текущий статус задачи
+        assignee_id:
+          type: string
+          format: uuid
+          nullable: true
+          example: "770e8400-e29b-41d4-a716-446655440002"
+          description: UUID исполнителя задачи (null если не назначен)
+        created_by:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID пользователя, создавшего задачу
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-08-13T10:30:00.000000000Z"
+          description: Дата создания (ISO 8601)
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-08-13T11:45:00.000000000Z"
+          description: Дата последнего обновления (ISO 8601)
+      description: Полная информация о задаче
+
+    TaskListResponse:
+      type: object
+      required: [tasks, total, limit, offset]
+      properties:
+        tasks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskResponse'
+          description: Список задач (отсортированы по created_at DESC)
+        total:
+          type: integer
+          example: 42
+          description: Общее количество задач, соответствующих фильтру (для пагинации)
+        limit:
+          type: integer
+          example: 20
+          description: Применённый лимит записей
+        offset:
+          type: integer
+          example: 0
+          description: Применённое смещение
+      description: Ответ со списком задач и информацией о пагинации
+
+    TaskHistoryItem:
+      type: object
+      required: [id, task_id, changed_by, changed_by_email, action, changes, changed_at]
+      properties:
+        id:
+          type: string
+          format: uuid
+          example: "aa0e8400-e29b-41d4-a716-446655440005"
+          description: UUID записи истории
+        task_id:
+          type: string
+          format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+          description: UUID задачи
+        changed_by:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID пользователя, внёсшего изменение
+        changed_by_email:
+          type: string
+          format: email
+          example: "user@example.com"
+          description: Email пользователя, внёсшего изменение
+        action:
+          type: string
+          enum: [created, updated, deleted]
+          example: "updated"
+          description: Тип действия
+        changes:
+          type: object
+          additionalProperties: true
+          example:
+            status:
+              from: "todo"
+              to: "in_progress"
+            assignee_id:
+              from: null
+              to: "770e8400-e29b-41d4-a716-446655440002"
+          description: |
+            Детали изменений.
+            
+            Для `created` содержит начальные значения всех полей.
+            Для `updated` содержит пары `from`/`to` для изменённых полей.
+        changed_at:
+          type: string
+          format: date-time
+          example: "2026-08-13T11:45:00.000000000Z"
+          description: Дата изменения (ISO 8601)
+      description: Элемент истории изменений задачи
+
+    TaskHistoryResponse:
+      type: object
+      required: [task_id, history, total]
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+          description: UUID задачи
+        history:
+          type: array
+          items:
+            $ref: '#/components/schemas/TaskHistoryItem'
+          description: Список записей истории (отсортированы по changed_at DESC — новые первыми)
+        total:
+          type: integer
+          example: 2
+          description: Общее количество записей истории
+      description: Ответ с полной историей изменений задачи

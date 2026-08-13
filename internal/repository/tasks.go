@@ -35,7 +35,7 @@ func NewTaskRepository(
 func (r *taskRepository) Create(
 	ctx context.Context,
 	task *domain.Task,
-	audit domain.TaskAudit,
+	history domain.TaskHistory,
 ) error {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -78,9 +78,7 @@ func (r *taskRepository) Create(
 	if err := insertTaskHistory(
 		ctx,
 		tx,
-		task.ID,
-		task.CreatedBy,
-		audit,
+		history,
 	); err != nil {
 		return fmt.Errorf("insert task creation history: %w", err)
 	}
@@ -96,7 +94,6 @@ func (r *taskRepository) Create(
 
 	return nil
 }
-
 
 // FindByID returns a task by ID.
 func (r *taskRepository) FindByID(
@@ -241,7 +238,7 @@ func (r *taskRepository) Update(
 	taskID uuid.UUID,
 	changedBy uuid.UUID,
 	update domain.TaskUpdate,
-	audit domain.TaskAudit,
+	history domain.TaskHistory,
 ) (*domain.Task, error) {
 	tx, err := r.db.Begin(ctx)
 	if err != nil {
@@ -326,9 +323,7 @@ func (r *taskRepository) Update(
 	if err := insertTaskHistory(
 		ctx,
 		tx,
-		task.ID,
-		changedBy,
-		audit,
+		history,
 	); err != nil {
 		return nil, fmt.Errorf("insert task update history: %w", err)
 	}
@@ -435,22 +430,20 @@ func (r *taskRepository) IsTeamMember(
 func insertTaskHistory(
 	ctx context.Context,
 	tx pgx.Tx,
-	taskID uuid.UUID,
-	changedBy uuid.UUID,
-	audit domain.TaskAudit,
+	history domain.TaskHistory,
 ) error {
 	const query = `
-		INSERT INTO task_history (
-			task_id,
-			changed_by,
-			action,
-			changes
-		)
-		VALUES ($1, $2, $3, $4)
-	`
+        INSERT INTO task_history (
+            id,
+            task_id,
+            changed_by,
+            action,
+            changes
+        )
+        VALUES ($1, $2, $3, $4, $5)
+    `
 
-	changes := audit.Changes
-
+	changes := history.Changes
 	if len(changes) == 0 {
 		changes = json.RawMessage(`{}`)
 	}
@@ -458,9 +451,10 @@ func insertTaskHistory(
 	_, err := tx.Exec(
 		ctx,
 		query,
-		taskID,
-		changedBy,
-		audit.Action,
+		history.ID,
+		history.TaskID,
+		history.ChangedBy,
+		history.Action,
 		changes,
 	)
 	if err != nil {
@@ -480,6 +474,3 @@ func nullableTaskStatus(
 
 	return *status
 }
-
-
-
