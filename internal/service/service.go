@@ -66,7 +66,7 @@ type TaskService interface {
 type AnalyticsService interface {
 	GetTeamStats(ctx context.Context, days int) (*dto.TeamStatsResponse, error)
 	GetTopCreators(ctx context.Context, months, topN int) (*dto.TopCreatorsResponse, error)
-
+	CheckAssigneeIntegrity(ctx context.Context, limit int) (*dto.IntegrityCheckResponse, error)
 }
 
 // NewServices creates a container with all the services.

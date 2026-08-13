@@ -84,5 +84,6 @@ func (h *Handlers) RegisterRoutes(router *gin.Engine, middlewares *middleware.Mi
 		// Analytics
 		protected.GET("/analytics/teams/stats", h.Analytics.GetTeamStats)
 		protected.GET("/analytics/teams/top-creators", h.Analytics.GetTopCreators)
+		protected.GET("/analytics/integrity/assignees", h.Analytics.CheckAssigneeIntegrity)
 	}
 }

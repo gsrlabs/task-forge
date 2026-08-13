@@ -230,3 +230,147 @@ func (r *analyticsRepository) GetTopCreators(
 
 	return creators, nil
 }
+
+// FindAssigneeIntegrityViolations finds tasks with integrity violations:
+// assignee is specified, but is not a member of the team of this task.
+//
+// The SQL query uses NOT EXISTS to check the conditions on the linked tables:
+// 1. We take all tasks with assigned assignee_id
+// 2. INNER JOIN teams to get the team name
+// 3. LEFT JOIN users twice — for email assignee and creator
+// 4. NOT EXISTS — check if there is no entry (team_id, assignee_id) in team_members
+//
+// Note: In normal operation, FK constraint fk_tasks_assignee_member
+// prevents such violations, but this query is useful for auditing and monitoring.
+//
+// Uses the index: idx_tasks_assignee_id
+func (r *analyticsRepository) FindAssigneeIntegrityViolations(
+	ctx context.Context,
+	limit int,
+) ([]domain.IntegrityViolation, error) {
+
+	query := `
+		SELECT
+			t.id              AS task_id,
+			t.team_id         AS team_id,
+			team.name         AS team_name,
+			t.title           AS task_title,
+			t.status          AS task_status,
+			t.assignee_id     AS assignee_id,
+			assignee.email    AS assignee_email,
+			t.created_by      AS created_by_id,
+			creator.email     AS created_by_email,
+			t.created_at      AS created_at,
+			t.updated_at      AS updated_at
+		FROM tasks t
+
+		-- Name of the task team
+		INNER JOIN teams team
+			ON t.team_id = team.id
+
+		-- Email of the performer (LEFT JOIN, as the user could have been deleted)
+		LEFT JOIN users assignee
+			ON t.assignee_id = assignee.id
+
+		-- Email address of the issue creator
+		LEFT JOIN users creator
+			ON t.created_by = creator.id
+
+		WHERE t.assignee_id IS NOT NULL
+			-- Key condition: assignee is NOT a member of the team for this task
+			AND NOT EXISTS (
+				SELECT 1
+				FROM team_members tm
+				WHERE tm.team_id = t.team_id
+					AND tm.user_id = t.assignee_id
+			)
+
+		ORDER BY t.updated_at DESC, t.id DESC
+		LIMIT $1
+	`
+
+	r.logger.Debug().
+		Int("limit", limit).
+		Msg("Executing assignee integrity check query")
+
+	rows, err := r.db.Query(ctx, query, limit)
+	if err != nil {
+		r.logger.Error().
+			Err(err).
+			Int("limit", limit).
+			Msg("Failed to execute assignee integrity check query")
+		return nil, fmt.Errorf("query integrity violations: %w", err)
+	}
+	defer rows.Close()
+
+	var violations []domain.IntegrityViolation
+	for rows.Next() {
+		var violation domain.IntegrityViolation
+
+		// Using pointers for nullable fields
+		var assigneeID *string
+		var assigneeEmail *string
+		var createdByEmail *string
+
+		err := rows.Scan(
+			&violation.TaskID,
+			&violation.TeamID,
+			&violation.TeamName,
+			&violation.TaskTitle,
+			&violation.TaskStatus,
+			&assigneeID,
+			&assigneeEmail,
+			&violation.CreatedByID,
+			&createdByEmail,
+			&violation.CreatedAt,
+			&violation.UpdatedAt,
+		)
+		if err != nil {
+			r.logger.Error().
+				Err(err).
+				Msg("Failed to scan integrity violation row")
+			return nil, fmt.Errorf("scan integrity violation: %w", err)
+		}
+
+		// Safely dereference nullable fields
+		if assigneeID != nil {
+			violation.AssigneeID = *assigneeID
+		}
+		if assigneeEmail != nil {
+			violation.AssigneeEmail = *assigneeEmail
+		} else {
+			violation.AssigneeEmail = "" // the user could have been deleted
+		}
+		if createdByEmail != nil {
+			violation.CreatedByEmail = *createdByEmail
+		} else {
+			violation.CreatedByEmail = ""
+		}
+
+		violations = append(violations, violation)
+	}
+
+	if err := rows.Err(); err != nil {
+		r.logger.Error().
+			Err(err).
+			Msg("Error iterating integrity violation rows")
+		return nil, fmt.Errorf("iterate integrity violations: %w", err)
+	}
+
+	// Returning an empty slice instead of nil
+	if violations == nil {
+		violations = []domain.IntegrityViolation{}
+	}
+
+	if len(violations) > 0 {
+		r.logger.Warn().
+			Int("violations_count", len(violations)).
+			Int("limit", limit).
+			Msg("Assignee integrity violations detected")
+	} else {
+		r.logger.Debug().
+			Msg("No assignee integrity violations found")
+	}
+
+	return violations, nil
+}
