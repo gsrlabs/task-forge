@@ -15,21 +15,24 @@ import (
 )
 
 type teamService struct {
-	teamRepo repository.TeamRepository
-	userRepo repository.UserRepository
-	logger   zerolog.Logger
+	teamRepo    repository.TeamRepository
+	userRepo    repository.UserRepository
+	emailSender EmailSender
+	logger      zerolog.Logger
 }
 
 // NewTeamService creates an instance of TeamService.
 func NewTeamService(
 	teamRepo repository.TeamRepository,
 	userRepo repository.UserRepository,
+	emailSender EmailSender,
 	logger zerolog.Logger,
 ) TeamService {
 	return &teamService{
-		teamRepo: teamRepo,
-		userRepo: userRepo,
-		logger:   logger,
+		teamRepo:    teamRepo,
+		userRepo:    userRepo,
+		emailSender: emailSender,
+		logger:      logger,
 	}
 }
 
@@ -40,7 +43,7 @@ func (s *teamService) Create(
 	req *dto.CreateTeamRequest,
 ) (*dto.CreateTeamResponse, error) {
 	team := &domain.Team{
-		ID: uuid.New(),
+		ID:   uuid.New(),
 		Name: req.Name,
 	}
 
@@ -214,10 +217,16 @@ func (s *teamService) Invite(
 		Str("assigned_role", req.Role).
 		Msg("User invited to team successfully")
 
+	if err := s.emailSender.SendMessage(req.Email, team.Name); err != nil {
+		return nil, fmt.Errorf("failed to send email: %w", err)
+	}
+
 	return &dto.InviteUserResponse{
 		Message: "user invited successfully",
 		TeamID:  teamID.String(),
 		UserID:  invitee.ID.String(),
 		Role:    req.Role,
 	}, nil
+
+	
 }

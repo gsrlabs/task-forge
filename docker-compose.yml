@@ -123,6 +123,21 @@ services:
       # -----------------------------------------------------------------------
       REDIS_ADDR: ${REDIS_ADDR}
       REDIS_PASSWORD: ${REDIS_PASSWORD}
+      
+      # -----------------------------------------------------------------------
+      # EMAIL
+      # -----------------------------------------------------------------------
+      EMAIL_MODE: ${EMAIL_MODE:-smtp}
+      # MAILTRAP
+      MAILTRAP_API_KEY: ${MAILTRAP_API_KEY}
+      MAILTRAP_DOMAIN: ${MAILTRAP_DOMAIN:-hello@demomailtrap.co}
+      MAILTRAP_NAME: ${MAILTRAP_NAME:-invoice}
+      # SMTP
+      SMTP_HOST: ${SMTP_HOST:-task-forge}
+      SMTP_PORT: ${SMTP_PORT:-1025}
+      SMTP_FROM: ${SMTP_FROM:-yourapp@example.com}
+      SMTP_USER: ${SMTP_USER}
+      SMTP_PASSWORD: ${SMTP_PASSWORD}
 
     ports:
       - "${APP_PORT}:8081"
@@ -135,6 +150,26 @@ services:
 
     networks:
       - taskforge-network
+
+
+  # ---------------------------------------------------------------------------
+  # Mailpit
+  # ---------------------------------------------------------------------------
+  mailpit:
+    image: axllent/mailpit:latest
+    container_name: mailpit
+    ports:
+      - "1025:1025" # SMTP порт (сюда будет отправлять сообщение)
+      - "8025:8025" # Web UI — тут смотреть письма
+    environment:
+      MP_SMTP_BIND_ADDR: 0.0.0.0:1025
+      MP_SMTP_AUTH_ACCEPT_ANY: "true" # ← принимает любые логин/пароль (или пустые)
+      MP_SMTP_AUTH_ALLOW_INSECURE: "true" # ← разрешает AUTH без TLS
+      MP_SMTP_REQUIRE_STARTTLS: "false" # можно добавить явно
+      MP_SMTP_REQUIRE_TLS: "false"
+    networks:
+      - taskforge-network
+    restart: unless-stopped
 
 
 # ============================================================================
@@ -155,4 +190,5 @@ networks:
   taskforge-network:
     driver: bridge
     name: taskforge-network
+  
 

@@ -74,10 +74,11 @@ func NewServices(
 	repos *repository.Repositories,
 	jwtManager *JWTManager,
 	cacheService *cache.CacheService,
+	emailSender EmailSender,
 	logger zerolog.Logger) *Services {
 	return &Services{
 		Auth:     NewAuthService(repos.Users, jwtManager, logger),
-		Teams:    NewTeamService(repos.Teams, repos.Users, logger),
+		Teams:    NewTeamService(repos.Teams, repos.Users, emailSender, logger),
 		Tasks:    NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
 		Analytics: NewAnalyticsService(repos.Analytics, logger),
 	}
