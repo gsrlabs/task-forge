@@ -113,7 +113,17 @@ func run(ctx context.Context) error {
 		Password: cfg.SMTP.Password,
 	}
 
-	emailSender := email.NewEmailSender(emailMode, smtpCfg, mailtrapCfg, log.Logger)
+	emailSender := email.NewEmailSender(
+		emailMode, 
+		smtpCfg, 
+		mailtrapCfg, 
+		log.Logger,
+	)
+
+	emailSender = service.NewCircuitBreakerEmailSender(
+    emailSender,
+    log.Logger,
+	)
 
 	// Repositories
 	repos := repository.NewRepositories(db, log.Logger)
