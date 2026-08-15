@@ -1,14 +1,16 @@
-package service
+// internal/email/email.go
+package email
 
 import (
 	"bytes"
 	"crypto/tls"
 	"encoding/json"
 	"fmt"
-	"task-forge/internal/config"
 	"net/http"
 	"net/smtp"
 	"strings"
+	"task-forge/internal/config"
+	"task-forge/internal/dto"
 	"time"
 
 	"github.com/rs/zerolog"
@@ -24,7 +26,7 @@ const (
 
 // EmailSender interface for sending emails
 type EmailSender interface {
-	SendMessage(toEmail, message string) error
+	SendInvitation(data dto.InvitationEmailData) error
 }
 
 // FACTORY
@@ -65,10 +67,10 @@ func newConsoleSender(logger zerolog.Logger) EmailSender {
 	return &consoleSender{logger: logger}
 }
 
-func (s *consoleSender) SendMessage(toEmail, message string) error {
+func (s *consoleSender) SendInvitation(data dto.InvitationEmailData) error {
 
 	fmt.Printf("\n%s\n", strings.Repeat("═", 69))
-	fmt.Printf("🔑 Message: %s\n", message)
+	fmt.Printf("%s invitation to join the %s\n", data.RecipientEmail, data.TeamName)
 	fmt.Printf("%s\n\n", strings.Repeat("═", 69))
 
 	return nil
@@ -114,8 +116,11 @@ type MailtrapTo struct {
 	Email string `json:"email"`
 }
 
-func (m *mailtrapSender) SendMessage(toEmail, message string) error {
-	htmlBody := buildMessageTemplate(message)
+func (m *mailtrapSender) SendInvitation(data dto.InvitationEmailData) error {
+	htmlBody, err := buildInvitationTemplate(data)
+	if err != nil {
+		return fmt.Errorf("build invitation email: %w", err)
+	}
 
 	payload := MailtrapRequest{
 		From: MailtrapFrom{
@@ -123,9 +128,9 @@ func (m *mailtrapSender) SendMessage(toEmail, message string) error {
 			Name:  m.fromName,
 		},
 		To: []MailtrapTo{
-			{Email: toEmail},
+			{Email: data.RecipientEmail},
 		},
-		Subject:  "Message:" + message,
+		Subject:  "Invitation to join " + data.TeamName,
 		HTML:     htmlBody,
 		Category: "Participant's invitation",
 	}
@@ -159,7 +164,7 @@ func (m *mailtrapSender) SendMessage(toEmail, message string) error {
 
 	m.logger.Info().
 		Str("from", m.fromEmail).
-		Str("to", toEmail).
+		Str("to", data.RecipientEmail).
 		Msg("✅ message sent via Mailtrap")
 
 	return nil
@@ -198,14 +203,17 @@ func newSMTPSender(cfg config.SMTPConfig, logger zerolog.Logger) EmailSender {
 	}
 }
 
-func (s *smtpSender) SendMessage(toEmail, message string) error {
+func (s *smtpSender) SendInvitation(data dto.InvitationEmailData) error {
 	if s.host == "" || s.port == 0 || s.from == "" {
 		return fmt.Errorf("smtp configuration is incomplete")
 	}
 
 	addr := fmt.Sprintf("%s:%d", s.host, s.port)
-	htmlBody := buildMessageTemplate(message)
-	subject := "Мessage:" + message
+	htmlBody, err := buildInvitationTemplate(data)
+	if err != nil {
+		return fmt.Errorf("build invitation email: %w", err)
+	}
+	subject := "Invitation to join " + data.TeamName
 
 	msg := fmt.Sprintf(`From: %s
 To: %s
@@ -215,7 +223,7 @@ Content-Type: text/html; charset="UTF-8"
 Date: %s
 
 %s`,
-		s.from, toEmail, subject,
+		s.from, data.RecipientEmail, subject,
 		time.Now().Format(time.RFC1123Z),
 		htmlBody,
 	)
@@ -226,12 +234,12 @@ Date: %s
 	}
 
 	if s.port == 465 {
-		return s.deliverSMTPOverTLS(addr, auth, toEmail, msg, "SMTPS (465 implicit TLS)")
+		return s.deliverSMTPOverTLS(addr, auth, data.RecipientEmail, msg, "SMTPS (465 implicit TLS)")
 	}
 
-	err := smtp.SendMail(addr, auth, s.from, []string{toEmail}, []byte(msg))
+	err = smtp.SendMail(addr, auth, s.from, []string{data.RecipientEmail}, []byte(msg))
 	if err == nil {
-		s.logSuccess(toEmail, "SMTP (STARTTLS)")
+		s.logSuccess(data.RecipientEmail, "SMTP (STARTTLS)")
 		return nil
 	}
 
@@ -245,7 +253,7 @@ Date: %s
 		return fmt.Errorf("failed to send email via SMTP: %w", err)
 	}
 
-	return s.deliverSMTPOverTLS(addr, auth, toEmail, msg, "SMTP (manual TLS after SendMail failure)")
+	return s.deliverSMTPOverTLS(addr, auth, data.RecipientEmail, msg, "SMTP (manual TLS after SendMail failure)")
 }
 
 func (s *smtpSender) deliverSMTPOverTLS(addr string, auth smtp.Auth, toEmail, msg, logLabel string) error {
@@ -317,17 +325,4 @@ func (s *smtpSender) logSuccess(toEmail, mode string) {
 		Str("to", toEmail).
 		Str("mode", mode).
 		Msg("✅ message sent via SMTP")
-}
-
-// SHARED HELPERS
-func buildMessageTemplate(message string) string {
-	return fmt.Sprintf(`<!DOCTYPE html>
-<html>
-<head><meta charset="utf-8"></head>
-<body style="font-family: Arial, sans-serif; text-align: center; padding: 40px;">
-    <h2>Participant's invitation</h2>
-    <p>You were invited to join the team:</p>
-    <h1 style="letter-spacing: 8px; font-size: 42px; color: #2563eb;">%s</h1>
-</body>
-</html>`, message)
 }

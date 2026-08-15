@@ -6,6 +6,7 @@ import (
 
 	"task-forge/internal/cache"
 	"task-forge/internal/dto"
+	"task-forge/internal/email"
 	"task-forge/internal/repository"
 
 	"github.com/google/uuid"
@@ -74,7 +75,7 @@ func NewServices(
 	repos *repository.Repositories,
 	jwtManager *JWTManager,
 	cacheService *cache.CacheService,
-	emailSender EmailSender,
+	emailSender email.EmailSender,
 	logger zerolog.Logger) *Services {
 	return &Services{
 		Auth:     NewAuthService(repos.Users, jwtManager, logger),

@@ -79,19 +79,17 @@ type JWTConfig struct {
 	Secret string `mapstructure:"secret"`
 }
 
-// ---------------- Email ----------------
+
 type EmailMod struct {
 	Mode string `mapstructure:"mode"`
 }
 
-// ---------------- Email (Mailtrap) ----------------
 type MailtrapConfig struct {
 	APIKey    string `mapstructure:"api_key"`
 	FromEmail string `mapstructure:"from_email"` // domain: "no-reply@your-domain.com" or hello@demomailtrap.co for test
 	FromName  string `mapstructure:"from_name"`
 }
 
-// ---------------- Email (SMTP) ----------------
 type SMTPConfig struct {
 	Host     string `mapstructure:"host"`
 	Port     int    `mapstructure:"port"`

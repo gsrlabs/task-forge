@@ -15,6 +15,7 @@ import (
 	"task-forge/internal/middleware"
 	"task-forge/internal/repository"
 	"task-forge/internal/service"
+	"task-forge/internal/email"
 	"task-forge/internal/validator"
 	"time"
 
@@ -112,7 +113,7 @@ func run(ctx context.Context) error {
 		Password: cfg.SMTP.Password,
 	}
 
-	emailSender := service.NewEmailSender(emailMode, smtpCfg, mailtrapCfg, log.Logger)
+	emailSender := email.NewEmailSender(emailMode, smtpCfg, mailtrapCfg, log.Logger)
 
 	// Repositories
 	repos := repository.NewRepositories(db, log.Logger)

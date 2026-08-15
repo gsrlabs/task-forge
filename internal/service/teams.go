@@ -8,6 +8,7 @@ import (
 
 	"task-forge/internal/domain"
 	"task-forge/internal/dto"
+	"task-forge/internal/email"
 	"task-forge/internal/repository"
 
 	"github.com/google/uuid"
@@ -17,7 +18,7 @@ import (
 type teamService struct {
 	teamRepo    repository.TeamRepository
 	userRepo    repository.UserRepository
-	emailSender EmailSender
+	emailSender email.EmailSender
 	logger      zerolog.Logger
 }
 
@@ -25,7 +26,7 @@ type teamService struct {
 func NewTeamService(
 	teamRepo repository.TeamRepository,
 	userRepo repository.UserRepository,
-	emailSender EmailSender,
+	emailSender email.EmailSender,
 	logger zerolog.Logger,
 ) TeamService {
 	return &teamService{
@@ -184,6 +185,7 @@ func (s *teamService) Invite(
 		s.logger.Error().Err(err).Msg("Failed to check existing membership")
 		return nil, fmt.Errorf("check membership: %w", err)
 	}
+
 	if existingRole != "" {
 		s.logger.Warn().
 			Str("team_id", teamID.String()).
@@ -217,8 +219,32 @@ func (s *teamService) Invite(
 		Str("assigned_role", req.Role).
 		Msg("User invited to team successfully")
 
-	if err := s.emailSender.SendMessage(req.Email, team.Name); err != nil {
-		return nil, fmt.Errorf("failed to send email: %w", err)
+	inviter, err := s.userRepo.FindByID(ctx, inviterID)
+	
+	inviterName := ""
+	
+	if err != nil || inviter == nil {
+		s.logger.Error().
+			Err(err).
+			Str("inviterID", inviterID.String()).
+			Msg("failed to find inviter")
+	} else {
+		inviterName = inviter.Email
+	}
+
+	data := dto.InvitationEmailData{
+		RecipientEmail: req.Email,
+		TeamName:       team.Name,
+		InviterName:    inviterName,
+		Role:           string(member.Role),
+		InviteURL:      "",
+	}
+
+	if err := s.emailSender.SendInvitation(data); err != nil {
+		s.logger.Error().
+			Err(err).
+			Str("email", req.Email).
+			Msg("failed to send invitation email")
 	}
 
 	return &dto.InviteUserResponse{
@@ -227,6 +253,4 @@ func (s *teamService) Invite(
 		UserID:  invitee.ID.String(),
 		Role:    req.Role,
 	}, nil
-
-	
 }
