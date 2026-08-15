@@ -466,6 +466,12 @@ paths:
         **🛡️ Rate Limiting (защищённые endpoints):**
         - **IP Limit:** 100 запросов с одного IP за 1 минуту
         - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+
+        **📧 Email sender**
+        -	Отправка email-уведомления пользователю после его приглашения в команду. 
+    
+        **🔌 Circuit breaker**
+        - При отправке email используется Circuit Breaker. Если внешний email-сервис становится недоступен, сервис не продолжает бесконечно выполнять неуспешные запросы.
       operationId: inviteUser
       security:
         - CookieAuth: []
