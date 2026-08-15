@@ -8,6 +8,7 @@ import (
 
 	"task-forge/internal/domain"
 	"task-forge/internal/dto"
+	"task-forge/internal/email"
 	"task-forge/internal/repository"
 
 	"github.com/google/uuid"
@@ -15,21 +16,24 @@ import (
 )
 
 type teamService struct {
-	teamRepo repository.TeamRepository
-	userRepo repository.UserRepository
-	logger   zerolog.Logger
+	teamRepo    repository.TeamRepository
+	userRepo    repository.UserRepository
+	emailSender email.EmailSender
+	logger      zerolog.Logger
 }
 
 // NewTeamService creates an instance of TeamService.
 func NewTeamService(
 	teamRepo repository.TeamRepository,
 	userRepo repository.UserRepository,
+	emailSender email.EmailSender,
 	logger zerolog.Logger,
 ) TeamService {
 	return &teamService{
-		teamRepo: teamRepo,
-		userRepo: userRepo,
-		logger:   logger,
+		teamRepo:    teamRepo,
+		userRepo:    userRepo,
+		emailSender: emailSender,
+		logger:      logger,
 	}
 }
 
@@ -40,7 +44,7 @@ func (s *teamService) Create(
 	req *dto.CreateTeamRequest,
 ) (*dto.CreateTeamResponse, error) {
 	team := &domain.Team{
-		ID: uuid.New(),
+		ID:   uuid.New(),
 		Name: req.Name,
 	}
 
@@ -181,6 +185,7 @@ func (s *teamService) Invite(
 		s.logger.Error().Err(err).Msg("Failed to check existing membership")
 		return nil, fmt.Errorf("check membership: %w", err)
 	}
+
 	if existingRole != "" {
 		s.logger.Warn().
 			Str("team_id", teamID.String()).
@@ -213,6 +218,34 @@ func (s *teamService) Invite(
 		Str("invitee_email", req.Email).
 		Str("assigned_role", req.Role).
 		Msg("User invited to team successfully")
+
+	inviter, err := s.userRepo.FindByID(ctx, inviterID)
+	
+	inviterName := ""
+	
+	if err != nil || inviter == nil {
+		s.logger.Error().
+			Err(err).
+			Str("inviterID", inviterID.String()).
+			Msg("failed to find inviter")
+	} else {
+		inviterName = inviter.Email
+	}
+
+	data := dto.InvitationEmailData{
+		RecipientEmail: req.Email,
+		TeamName:       team.Name,
+		InviterName:    inviterName,
+		Role:           string(member.Role),
+		InviteURL:      "",
+	}
+
+	if err := s.emailSender.SendInvitation(data); err != nil {
+		s.logger.Error().
+			Err(err).
+			Str("email", req.Email).
+			Msg("failed to send invitation email")
+	}
 
 	return &dto.InviteUserResponse{
 		Message: "user invited successfully",

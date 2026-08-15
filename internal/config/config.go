@@ -38,6 +38,10 @@ type Config struct {
 	Logging    LoggingConfig   `mapstructure:"logging"`
 	Redis      RedisConfig     `mapstructure:"redis"`
 	JWT        JWTConfig       `mapstructure:"jwt"`
+
+	Email    EmailMod       `mapstructure:"email"`
+	Mailtrap MailtrapConfig `mapstructure:"mailtrap"`
+	SMTP     SMTPConfig     `mapstructure:"smtp"`
 }
 
 type AppConfig struct {
@@ -73,6 +77,25 @@ type RedisConfig struct {
 type JWTConfig struct {
 	Expiry int    `mapstructure:"expiry"`
 	Secret string `mapstructure:"secret"`
+}
+
+
+type EmailMod struct {
+	Mode string `mapstructure:"mode"`
+}
+
+type MailtrapConfig struct {
+	APIKey    string `mapstructure:"api_key"`
+	FromEmail string `mapstructure:"from_email"` // domain: "no-reply@your-domain.com" or hello@demomailtrap.co for test
+	FromName  string `mapstructure:"from_name"`
+}
+
+type SMTPConfig struct {
+	Host     string `mapstructure:"host"`
+	Port     int    `mapstructure:"port"`
+	From     string `mapstructure:"from"`
+	Username string `mapstructure:"username"`
+	Password string `mapstructure:"password"`
 }
 
 // Load the application configuration.
@@ -179,6 +202,50 @@ func Load() (*Config, error) {
 	}
 
 	v.SetDefault("redis.addr", "redis:6379")
+
+	// =========================================================================
+	// Email
+	// =========================================================================
+
+	// ---------------  Email mode ---------------
+	if err := v.BindEnv("email.mode", "EMAIL_MODE"); err != nil {
+		return nil, fmt.Errorf("bind EMAIL_MODE: %w", err)
+	}
+
+	// ----------------  Mailtrap ----------------
+
+	if err := v.BindEnv("mailtrap.api_key", "MAILTRAP_API_KEY"); err != nil {
+		return nil, fmt.Errorf("bind MAILTRAP_API_KEY: %w", err)
+	}
+
+	if err := v.BindEnv("mailtrap.from_email", "MAILTRAP_DOMAIN"); err != nil {
+		return nil, fmt.Errorf("bind MAILTRAP_DOMAIN: %w", err)
+	}
+
+	if err := v.BindEnv("mailtrap.from_name", "MAILTRAP_NAME"); err != nil {
+		return nil, fmt.Errorf("bind MAILTRAP_NAME: %w", err)
+	}
+
+	// ----------------  SMTP ----------------
+	if err := v.BindEnv("smtp.host", "SMTP_HOST"); err != nil {
+		return nil, fmt.Errorf("bind SMTP_HOST: %w", err)
+	}
+
+	if err := v.BindEnv("smtp.port", "SMTP_PORT"); err != nil {
+		return nil, fmt.Errorf("bind SMTP_PORT: %w", err)
+	}
+
+	if err := v.BindEnv("smtp.from", "SMTP_FROM"); err != nil {
+		return nil, fmt.Errorf("bind SMTP_FROM: %w", err)
+	}
+
+	if err := v.BindEnv("smtp.user", "SMTP_USER"); err != nil {
+		return nil, fmt.Errorf("bind SMTP_USER: %w", err)
+	}
+
+	if err := v.BindEnv("smtp.password", "SMTP_PASSWORD"); err != nil {
+		return nil, fmt.Errorf("bind SMTP_PASSWORD: %w", err)
+	}
 
 	var cfg Config
 
@@ -374,6 +441,48 @@ func (c *Config) Validate() ValidationReport {
 				Severity: SeverityFatal,
 				Field:    "migrations.password",
 				Message:  "MIGRATION_DB_PASSWORD is required when automatic migrations are enabled",
+			})
+		}
+	}
+
+	// =========================================================================
+	// EMAIL
+	// =========================================================================
+
+	// Mailtrap
+	if c.Email.Mode == "mailtrap" {
+		if c.Mailtrap.APIKey == "" {
+			report.Errors = append(report.Errors, ValidationError{
+				Severity: SeverityFatal,
+				Field:    "mailtrap.api_key",
+				Message:  "mailtrap.api_key is required",
+			})
+		}
+
+		if c.Mailtrap.FromEmail == "" {
+			report.Errors = append(report.Errors, ValidationError{
+				Severity: SeverityFatal,
+				Field:    "email.from_email",
+				Message:  "email.from_email is required",
+			})
+		}
+	}
+
+	// SMTP
+	if c.Email.Mode == "smtp" {
+		if c.SMTP.Host == "" {
+			report.Errors = append(report.Errors, ValidationError{
+				Severity: SeverityFatal,
+				Field:    "smtp.host",
+				Message:  "smtp.host is required",
+			})
+		}
+
+		if c.SMTP.Port < 1 || c.SMTP.Port > 65535 {
+			report.Errors = append(report.Errors, ValidationError{
+				Severity: SeverityFatal,
+				Field:    "smtp.port",
+				Message:  "smtp.port must be between 1 and 65535",
 			})
 		}
 	}

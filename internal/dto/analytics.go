@@ -39,3 +39,26 @@ type CreatorStats struct {
 	TasksCreated int    `json:"tasks_created"`
 	Rank         int    `json:"rank"`
 }
+
+// IntegrityCheckResponse is the response with the result of the integrity check.
+type IntegrityCheckResponse struct {
+	Healthy         bool                  `json:"healthy"`
+	Violations      []IntegrityViolationItem `json:"violations"`
+	ViolationsCount int                   `json:"violations_count"`
+	CheckedAt       string                `json:"checked_at"`
+}
+
+// IntegrityViolationItem is an element of the integrity violations list.
+type IntegrityViolationItem struct {
+	TaskID         string `json:"task_id"`
+	TeamID         string `json:"team_id"`
+	TeamName       string `json:"team_name"`
+	TaskTitle      string `json:"task_title"`
+	TaskStatus     string `json:"task_status"`
+	AssigneeID     string `json:"assignee_id"`
+	AssigneeEmail  string `json:"assignee_email"`
+	CreatedByID    string `json:"created_by_id"`
+	CreatedByEmail string `json:"created_by_email"`
+	CreatedAt      string `json:"created_at"`
+	UpdatedAt      string `json:"updated_at"`
+}

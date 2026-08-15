@@ -1,1 +1,2 @@
 - **Swagger task-forge URL:** `http://localhost:8081/swagger`
+- **Mailtip** `http://localhost:8025` (для получения otp)

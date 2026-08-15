@@ -15,6 +15,7 @@ import (
 	"task-forge/internal/middleware"
 	"task-forge/internal/repository"
 	"task-forge/internal/service"
+	"task-forge/internal/email"
 	"task-forge/internal/validator"
 	"time"
 
@@ -95,6 +96,35 @@ func run(ctx context.Context) error {
 		}
 	}()
 
+	// Email
+	emailMode := cfg.Email.Mode
+
+	mailtrapCfg := config.MailtrapConfig{
+		APIKey:  cfg.Mailtrap.APIKey,
+		FromEmail: cfg.Mailtrap.FromEmail,
+		FromName:  cfg.Mailtrap.FromName,
+	}
+
+	smtpCfg := config.SMTPConfig{
+		Host:     cfg.SMTP.Host,
+		Port:     cfg.SMTP.Port,
+		From:     cfg.SMTP.From,
+		Username: cfg.SMTP.Username,
+		Password: cfg.SMTP.Password,
+	}
+
+	emailSender := email.NewEmailSender(
+		emailMode, 
+		smtpCfg, 
+		mailtrapCfg, 
+		log.Logger,
+	)
+
+	emailSender = service.NewCircuitBreakerEmailSender(
+    emailSender,
+    log.Logger,
+	)
+
 	// Repositories
 	repos := repository.NewRepositories(db, log.Logger)
 	log.Info().Msg("Repositories initialized")
@@ -104,7 +134,8 @@ func run(ctx context.Context) error {
 	services := service.NewServices(
 		repos, 
 		jwtManager, 
-		cacheService, 
+		cacheService,
+		emailSender,
 		log.Logger,
 	)
 	log.Info().Msg("Services initialized")

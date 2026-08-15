@@ -6,6 +6,7 @@ import (
 
 	"task-forge/internal/cache"
 	"task-forge/internal/dto"
+	"task-forge/internal/email"
 	"task-forge/internal/repository"
 
 	"github.com/google/uuid"
@@ -66,7 +67,7 @@ type TaskService interface {
 type AnalyticsService interface {
 	GetTeamStats(ctx context.Context, days int) (*dto.TeamStatsResponse, error)
 	GetTopCreators(ctx context.Context, months, topN int) (*dto.TopCreatorsResponse, error)
-
+	CheckAssigneeIntegrity(ctx context.Context, limit int) (*dto.IntegrityCheckResponse, error)
 }
 
 // NewServices creates a container with all the services.
@@ -74,10 +75,11 @@ func NewServices(
 	repos *repository.Repositories,
 	jwtManager *JWTManager,
 	cacheService *cache.CacheService,
+	emailSender email.EmailSender,
 	logger zerolog.Logger) *Services {
 	return &Services{
 		Auth:     NewAuthService(repos.Users, jwtManager, logger),
-		Teams:    NewTeamService(repos.Teams, repos.Users, logger),
+		Teams:    NewTeamService(repos.Teams, repos.Users, emailSender, logger),
 		Tasks:    NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
 		Analytics: NewAnalyticsService(repos.Analytics, logger),
 	}

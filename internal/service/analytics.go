@@ -13,12 +13,14 @@ import (
 )
 
 const (
-	defaultDaysPeriod   = 7
-	maxDaysPeriod       = 365
-	defaultMonthsPeriod = 1
-	maxMonthsPeriod     = 12
-	defaultTopN         = 3
-	maxTopN             = 10
+	DefaultDaysPeriod   = 7
+	MaxDaysPeriod       = 365
+	DefaultMonthsPeriod = 1
+	MaxMonthsPeriod     = 12
+	DefaultTopN         = 3
+	MaxTopN             = 10
+	DefaultIntegrityLimit = 100
+	MaxIntegrityLimit   = 1000
 )
 
 type analyticsService struct {
@@ -44,10 +46,10 @@ func (s *analyticsService) GetTeamStats(
 ) (*dto.TeamStatsResponse, error) {
 
 	if days <= 0 {
-		days = defaultDaysPeriod
+		days = DefaultDaysPeriod
 	}
-	if days > maxDaysPeriod {
-		days = maxDaysPeriod
+	if days > MaxDaysPeriod {
+		days = MaxDaysPeriod
 	}
 
 	// Calculating the start date of the period
@@ -102,17 +104,17 @@ func (s *analyticsService) GetTopCreators(
 
 	// Normalize the parameters
 	if months <= 0 {
-		months = defaultMonthsPeriod
+		months = DefaultMonthsPeriod
 	}
-	if months > maxMonthsPeriod {
-		months = maxMonthsPeriod
+	if months > MaxMonthsPeriod {
+		months = MaxMonthsPeriod
 	}
 
 	if topN <= 0 {
-		topN = defaultTopN
+		topN = DefaultTopN
 	}
-	if topN > maxTopN {
-		topN = maxTopN
+	if topN > MaxTopN {
+		topN = MaxTopN
 	}
 
 	// Requesting data from the repository
@@ -172,5 +174,73 @@ func (s *analyticsService) GetTopCreators(
 		MonthsPeriod: months,
 		TopN:         topN,
 		SinceDate:    sinceDate.Format("2006-01-02T15:04:05Z07:00"),
+	}, nil
+}
+
+
+// CheckAssigneeIntegrity performs data integrity verification.
+//
+// Business logic:
+// 1. Validation and normalization of the limit parameter
+// 2. Requesting violations from the repository
+// 3. Generating a response with the healthy flag and a list of violations
+// 4. Logging the result (Warn if violations are detected)
+func (s *analyticsService) CheckAssigneeIntegrity(
+	ctx context.Context,
+	limit int,
+) (*dto.IntegrityCheckResponse, error) {
+	// Normalizing the limit parameter
+	if limit <= 0 {
+		limit = DefaultIntegrityLimit
+	}
+	if limit > MaxIntegrityLimit {
+		limit = MaxIntegrityLimit
+	}
+
+	// Requesting violations from the repository
+	violations, err := s.analyticsRepo.FindAssigneeIntegrityViolations(ctx, limit)
+	if err != nil {
+		s.logger.Error().
+			Err(err).
+			Int("limit", limit).
+			Msg("Failed to check assignee integrity")
+		return nil, fmt.Errorf("check assignee integrity: %w", err)
+	}
+
+	// Mapim domain → DTO
+	violationsDTO := make([]dto.IntegrityViolationItem, 0, len(violations))
+	for _, v := range violations {
+		violationsDTO = append(violationsDTO, dto.IntegrityViolationItem{
+			TaskID:         v.TaskID,
+			TeamID:         v.TeamID,
+			TeamName:       v.TeamName,
+			TaskTitle:      v.TaskTitle,
+			TaskStatus:     v.TaskStatus,
+			AssigneeID:     v.AssigneeID,
+			AssigneeEmail:  v.AssigneeEmail,
+			CreatedByID:    v.CreatedByID,
+			CreatedByEmail: v.CreatedByEmail,
+			CreatedAt:      v.CreatedAt.Format("2006-01-02T15:04:05Z07:00"),
+			UpdatedAt:      v.UpdatedAt.Format("2006-01-02T15:04:05Z07:00"),
+		})
+	}
+
+	// Logging the verification result
+	healthy := len(violationsDTO) == 0
+	if !healthy {
+		s.logger.Warn().
+			Int("violations_count", len(violationsDTO)).
+			Int("limit", limit).
+			Msg("Assignee integrity violations detected")
+	} else {
+		s.logger.Info().
+			Msg("Assignee integrity check passed: no violations found")
+	}
+
+	return &dto.IntegrityCheckResponse{
+		Healthy:         healthy,
+		Violations:      violationsDTO,
+		ViolationsCount: len(violationsDTO),
+		CheckedAt:       time.Now().Format("2006-01-02T15:04:05Z07:00"),
 	}, nil
 }
