@@ -151,6 +151,25 @@ HALF-OPEN
 
 При этом ошибка отправки email не отменяет уже выполненное добавление пользователя в команду.
 
+### 📊 Prometheus Metrics
+
+В приложении реализован сбор HTTP-метрик для последующего мониторинга через Prometheus.
+
+Собираются следующие показатели:
+
+- общее количество HTTP-запросов;
+- количество HTTP-запросов с ошибками (`4xx` и `5xx`);
+- время выполнения HTTP-запросов.
+
+Основные метрики:
+
+```text
+taskforge_http_requests_total
+taskforge_http_errors_total
+taskforge_http_request_duration_seconds
+```
+Метрики разбиваются по HTTP-методу, endpoint и HTTP-статусу, что позволяет анализировать нагрузку, количество ошибок и производительность отдельных API-методов.
+
 ---
 
 ## 🏗️ Архитектура
@@ -464,8 +483,8 @@ Rate limiting реализован как дополнительный уров�
 ### Libraries / Components
 
 * `go-redis`
-* `go-chi` / HTTP routing
-* `gorm` / PostgreSQL access
+* `gin` / HTTP routing
+* `pgx` / PostgreSQL access
 * `goose`
 * `gobreaker`
 * `zerolog`
