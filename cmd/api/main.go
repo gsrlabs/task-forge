@@ -11,15 +11,17 @@ import (
 	"task-forge/internal/cache"
 	"task-forge/internal/config"
 	"task-forge/internal/database"
+	"task-forge/internal/email"
 	"task-forge/internal/handler"
+	"task-forge/internal/metrics"
 	"task-forge/internal/middleware"
 	"task-forge/internal/repository"
 	"task-forge/internal/service"
-	"task-forge/internal/email"
 	"task-forge/internal/validator"
 	"time"
 
 	"github.com/gin-gonic/gin"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 	"github.com/rs/zerolog"
 	"github.com/rs/zerolog/log"
 )
@@ -165,11 +167,19 @@ func run(ctx context.Context) error {
 	}
 
 	router := gin.New()
+
+  // Prometheus metrics
+	httpMetrics := metrics.NewHTTPMetrics()
+	
+	router.Use(middleware.Prometheus(httpMetrics))
 	router.Use(gin.Recovery())
 	router.Use(ginLogger(log.Logger))
 
 	handlers.RegisterRoutes(router, middlewares)
 	log.Info().Msg("Routes registered")
+
+	// Prometheus endpoint
+	router.GET("/metrics", gin.WrapH(promhttp.Handler()))
 
 	// Swagger UI
 	swagger := router.Group("/swagger")
