@@ -154,7 +154,9 @@ HALF-OPEN
 ### 📊 Prometheus Metrics
 
 В приложении реализован сбор HTTP-метрик для последующего мониторинга через Prometheus.
-
+```Bash
+curl http://localhost:8081/metrics
+```
 Собираются следующие показатели:
 
 - общее количество HTTP-запросов;
@@ -604,20 +606,6 @@ MAILTRAP
 
 ---
 
-## 📊 Prometheus
-
-### Планируется
-
-Будет добавлена интеграция с Prometheus для сбора основных метрик приложения:
-
-* количество HTTP-запросов;
-* количество ошибок;
-* время ответа;
-* распределение latency;
-* дополнительные технические метрики сервисов.
-
----
-
 ## 🔄 CI/CD
 
 ### Планируется
@@ -674,6 +662,7 @@ Deployment
 * [x] Redis rate limiting
 * [x] Goose migrations
 * [x] Graceful shutdown
+* [x] Prometheus metrics
 
 ### Security
 
@@ -701,7 +690,6 @@ Deployment
 * [ ] Unit tests
 * [ ] PostgreSQL integration tests with Testcontainers
 * [ ] Minimum 85% coverage for critical methods
-* [ ] Prometheus metrics
 * [ ] CI/CD
 * [ ] Automated deployment script
 * [ ] Complete deployment documentation
