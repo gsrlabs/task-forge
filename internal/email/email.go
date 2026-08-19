@@ -183,7 +183,7 @@ type smtpSender struct {
 func newSMTPSender(cfg config.SMTPConfig, logger zerolog.Logger) EmailSender {
 	passExist := "not exist"
 	if cfg.Username != "" {
-		cfg.Password = "exist"
+		passExist = "exist"
 	}
 
 	logger.Debug().

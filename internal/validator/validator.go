@@ -65,7 +65,7 @@ func validatePassword(fl validator.FieldLevel) bool {
 		return false
 	}
 
-	password := fl.Field().String()
+	password := field.String()
 
 	for _, r := range password {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {

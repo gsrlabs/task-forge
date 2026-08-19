@@ -1,4 +1,4 @@
-//internal/repository/analytics.go
+// internal/repository/analytics.go
 package repository
 
 import (
@@ -40,26 +40,26 @@ func (r *analyticsRepository) GetTeamStats(
 
 	// Complex SQL query with JOIN 3 tables and aggregation
 	query := `
-		SELECT 
+		SELECT
 			t.id AS team_id,
 			t.name AS team_name,
 			COALESCE(member_counts.count, 0) AS members_count,
 			COALESCE(done_tasks.count, 0) AS done_tasks_count,
 			$1::timestamptz AS done_tasks_since
 		FROM teams t
-		
+
 		-- A subquery for counting team members
 		LEFT JOIN (
-			SELECT 
+			SELECT
 				team_id,
 				COUNT(*) AS count
 			FROM team_members
 			GROUP BY team_id
 		) member_counts ON t.id = member_counts.team_id
-		
+
 		-- A subquery for calculating tasks with the 'done' status for the last N days
 		LEFT JOIN (
-			SELECT 
+			SELECT
 				team_id,
 				COUNT(*) AS count
 			FROM tasks
@@ -67,7 +67,6 @@ func (r *analyticsRepository) GetTeamStats(
 				AND updated_at >= $1
 			GROUP BY team_id
 		) done_tasks ON t.id = done_tasks.team_id
-		
 		ORDER BY t.name ASC
 	`
 
@@ -82,7 +81,7 @@ func (r *analyticsRepository) GetTeamStats(
 	}
 	defer rows.Close()
 
-	var stats []domain.TeamStats
+	stats := make([]domain.TeamStats, 0)
 	for rows.Next() {
 		var stat domain.TeamStats
 		err := rows.Scan(
@@ -106,11 +105,6 @@ func (r *analyticsRepository) GetTeamStats(
 			Err(err).
 			Msg("Error iterating team stats rows")
 		return nil, fmt.Errorf("iterate team stats: %w", err)
-	}
-
-	// If there are no commands, we return an empty slice
-	if stats == nil {
-		stats = []domain.TeamStats{}
 	}
 
 	r.logger.Debug().
@@ -150,7 +144,7 @@ func (r *analyticsRepository) GetTopCreators(
 				COUNT(t.id) AS tasks_created,
 				RANK() OVER (
 					PARTITION BY t.team_id
-					ORDER BY COUNT(t.id) DESC, t.created_by ASC
+					ORDER BY COUNT(t.id) DESC
 				) AS rank
 			FROM tasks t
 			INNER JOIN users u
@@ -191,7 +185,7 @@ func (r *analyticsRepository) GetTopCreators(
 	}
 	defer rows.Close()
 
-	var creators []domain.TopCreator
+	creators := make([]domain.TopCreator, 0)
 	for rows.Next() {
 		var creator domain.TopCreator
 		err := rows.Scan(
@@ -216,10 +210,6 @@ func (r *analyticsRepository) GetTopCreators(
 			Err(err).
 			Msg("Error iterating top creator rows")
 		return nil, fmt.Errorf("iterate top creators: %w", err)
-	}
-
-	if creators == nil {
-		creators = []domain.TopCreator{}
 	}
 
 	r.logger.Debug().
@@ -303,7 +293,7 @@ func (r *analyticsRepository) FindAssigneeIntegrityViolations(
 	}
 	defer rows.Close()
 
-	var violations []domain.IntegrityViolation
+	violations := make([]domain.IntegrityViolation, 0)
 	for rows.Next() {
 		var violation domain.IntegrityViolation
 
@@ -355,11 +345,6 @@ func (r *analyticsRepository) FindAssigneeIntegrityViolations(
 			Err(err).
 			Msg("Error iterating integrity violation rows")
 		return nil, fmt.Errorf("iterate integrity violations: %w", err)
-	}
-
-	// Returning an empty slice instead of nil
-	if violations == nil {
-		violations = []domain.IntegrityViolation{}
 	}
 
 	if len(violations) > 0 {

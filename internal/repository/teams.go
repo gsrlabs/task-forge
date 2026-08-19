@@ -124,7 +124,7 @@ func (r *teamRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]
 	}
 	defer rows.Close()
 
-	var teams []domain.TeamWithRole
+	teams := make([]domain.TeamWithRole, 0)
 	for rows.Next() {
 		var team domain.TeamWithRole
 		err := rows.Scan(

@@ -78,6 +78,10 @@ func run(ctx context.Context) error {
 	}
 	defer db.Close()
 
+	if err := db.Ping(ctx); err != nil {
+		return fmt.Errorf("failed to ping postgres: %w", err)
+	}
+
 	log.Info().Msg("Connected to database")
 
 	// Migrations
@@ -102,7 +106,7 @@ func run(ctx context.Context) error {
 	emailMode := cfg.Email.Mode
 
 	mailtrapCfg := config.MailtrapConfig{
-		APIKey:  cfg.Mailtrap.APIKey,
+		APIKey:    cfg.Mailtrap.APIKey,
 		FromEmail: cfg.Mailtrap.FromEmail,
 		FromName:  cfg.Mailtrap.FromName,
 	}
@@ -116,15 +120,15 @@ func run(ctx context.Context) error {
 	}
 
 	emailSender := email.NewEmailSender(
-		emailMode, 
-		smtpCfg, 
-		mailtrapCfg, 
+		emailMode,
+		smtpCfg,
+		mailtrapCfg,
 		log.Logger,
 	)
 
 	emailSender = service.NewCircuitBreakerEmailSender(
-    emailSender,
-    log.Logger,
+		emailSender,
+		log.Logger,
 	)
 
 	// Repositories
@@ -134,8 +138,8 @@ func run(ctx context.Context) error {
 	// Services
 	jwtManager := service.NewJWTManager(cfg.App.EncryptionKey, cfg.JWTExpiration())
 	services := service.NewServices(
-		repos, 
-		jwtManager, 
+		repos,
+		jwtManager,
 		cacheService,
 		emailSender,
 		log.Logger,
@@ -168,9 +172,9 @@ func run(ctx context.Context) error {
 
 	router := gin.New()
 
-  // Prometheus metrics
+	// Prometheus metrics
 	httpMetrics := metrics.NewHTTPMetrics()
-	
+
 	router.Use(middleware.Prometheus(httpMetrics))
 	router.Use(gin.Recovery())
 	router.Use(ginLogger(log.Logger))
