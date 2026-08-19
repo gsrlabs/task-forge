@@ -54,7 +54,7 @@ func validateEmail(fl validator.FieldLevel) bool {
 func validatePassword(fl validator.FieldLevel) bool {
 	field := fl.Field()
 
-	if field.Kind() == reflect.Ptr {
+	if field.Kind() == reflect.Pointer {
 		if field.IsNil() {
 			return false
 		}
