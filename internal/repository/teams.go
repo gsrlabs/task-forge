@@ -35,7 +35,11 @@ func (r *teamRepository) Create(ctx context.Context, userID uuid.UUID, team *dom
 	if err != nil {
 		return fmt.Errorf("begin transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+    if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+        r.logger.Printf("failed to rollback transaction: %v", err)
+    }
+	}()
 
 	query := `
 		INSERT INTO teams (id, name, created_by)
@@ -124,7 +128,7 @@ func (r *teamRepository) FindByUserID(ctx context.Context, userID uuid.UUID) ([]
 	}
 	defer rows.Close()
 
-	var teams []domain.TeamWithRole
+	teams := make([]domain.TeamWithRole, 0)
 	for rows.Next() {
 		var team domain.TeamWithRole
 		err := rows.Scan(

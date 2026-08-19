@@ -1,3 +1,4 @@
+// internal/metrics/metrics.go
 package metrics
 
 import (
@@ -12,6 +13,12 @@ type HTTPMetrics struct {
 }
 
 func NewHTTPMetrics() *HTTPMetrics {
+	return newHTTPMetricsWithRegistry(prometheus.DefaultRegisterer)
+}
+
+func newHTTPMetricsWithRegistry(
+	registerer prometheus.Registerer,
+) *HTTPMetrics {
 	m := &HTTPMetrics{
 		RequestsTotal: prometheus.NewCounterVec(
 			prometheus.CounterOpts{
@@ -46,7 +53,7 @@ func NewHTTPMetrics() *HTTPMetrics {
 		),
 	}
 
-	prometheus.MustRegister(
+	registerer.MustRegister(
 		m.RequestsTotal,
 		m.ErrorsTotal,
 		m.Duration,

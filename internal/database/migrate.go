@@ -27,9 +27,12 @@ func RunMigrations(cfg config.DatabaseConfig, migrationsCfg config.MigrationConf
 	if err != nil {
 		return fmt.Errorf("failed to open sql connection for migrations: %w", err)
 	}
-	defer db.Close()
+	defer func() {
+		if err := db.Close(); err != nil {
+			log.Printf("failed to close database connection: %v", err)
+		}
+	}()
 
-	// We intercept the Goose log in zerolog.
 	goose.SetLogger(&GooseZerologAdapter{logger: log})
 
 	if err := goose.Up(db, migrationsCfg.Path); err != nil {
@@ -37,7 +40,7 @@ func RunMigrations(cfg config.DatabaseConfig, migrationsCfg config.MigrationConf
 	}
 
 	log.Info().Str("path", migrationsCfg.Path).Msg("Database migrations applied successfully")
-	
+
 	return nil
 }
 

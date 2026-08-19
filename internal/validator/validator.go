@@ -24,7 +24,7 @@ func NewValidator() *Validator {
 	return &Validator{validate: v}
 }
 
-func (v *Validator) ValidateStruct(s interface{}) error {
+func (v *Validator) ValidateStruct(s any) error {
 	return v.validate.Struct(s)
 }
 
@@ -54,7 +54,7 @@ func validateEmail(fl validator.FieldLevel) bool {
 func validatePassword(fl validator.FieldLevel) bool {
 	field := fl.Field()
 
-	if field.Kind() == reflect.Ptr {
+	if field.Kind() == reflect.Pointer {
 		if field.IsNil() {
 			return false
 		}
@@ -65,7 +65,7 @@ func validatePassword(fl validator.FieldLevel) bool {
 		return false
 	}
 
-	password := fl.Field().String()
+	password := field.String()
 
 	for _, r := range password {
 		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') {

@@ -41,7 +41,12 @@ func (r *taskRepository) Create(
 	if err != nil {
 		return fmt.Errorf("begin task creation transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+
+	defer func() {
+    if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+        r.logger.Printf("failed to rollback transaction: %v", err)
+    }
+	}()
 
 	const insertTaskQuery = `
 		INSERT INTO tasks (
@@ -244,7 +249,11 @@ func (r *taskRepository) Update(
 	if err != nil {
 		return nil, fmt.Errorf("begin task update transaction: %w", err)
 	}
-	defer tx.Rollback(ctx)
+	defer func() {
+    if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+        r.logger.Printf("failed to rollback transaction: %v", err)
+    }
+	}()
 
 	const query = `
 		UPDATE tasks
