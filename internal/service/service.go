@@ -70,8 +70,8 @@ type AnalyticsService interface {
 	CheckAssigneeIntegrity(ctx context.Context, limit int) (*dto.IntegrityCheckResponse, error)
 }
 
-// TaskCacheService for mock
-type TaskCacheService interface {
+// CacheService for mock
+type CacheService interface {
 	GetTeamTasks(
 		ctx context.Context,
 		teamID string,
@@ -100,7 +100,7 @@ type TaskCacheService interface {
 func NewServices(
 	repos *repository.Repositories,
 	jwtManager *JWTManager,
-	cacheService TaskCacheService,
+	cacheService CacheService,
 	emailSender email.EmailSender,
 	logger zerolog.Logger) *Services {
 	return &Services{

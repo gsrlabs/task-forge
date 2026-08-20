@@ -92,15 +92,6 @@ func (m *mockUserRepository) FindByID(ctx context.Context, id uuid.UUID) (*domai
 	return args.Get(0).(*domain.User), args.Error(1)
 }
 
-type mockEmailSender struct {
-	mock.Mock
-}
-
-func (m *mockEmailSender) SendInvitation(data dto.InvitationEmailData) error {
-	args := m.Called(data)
-	return args.Error(0)
-}
-
 // ============================================================================
 // Test helpers
 // ============================================================================

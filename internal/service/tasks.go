@@ -22,7 +22,7 @@ import (
 type taskService struct {
 	taskRepo     repository.TaskRepository
 	teamRepo     repository.TeamRepository
-	cacheService TaskCacheService
+	cacheService CacheService
 	logger       zerolog.Logger
 }
 
@@ -30,7 +30,7 @@ type taskService struct {
 func NewTaskService(
 	taskRepo repository.TaskRepository,
 	teamRepo repository.TeamRepository,
-	cacheService TaskCacheService,
+	cacheService CacheService,
 	logger zerolog.Logger,
 ) TaskService {
 	return &taskService{
