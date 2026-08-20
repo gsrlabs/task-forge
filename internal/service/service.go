@@ -4,7 +4,7 @@ package service
 import (
 	"context"
 
-	"task-forge/internal/cache"
+	//"task-forge/internal/cache"
 	"task-forge/internal/dto"
 	"task-forge/internal/email"
 	"task-forge/internal/repository"
@@ -70,11 +70,37 @@ type AnalyticsService interface {
 	CheckAssigneeIntegrity(ctx context.Context, limit int) (*dto.IntegrityCheckResponse, error)
 }
 
+// TaskCacheService for mock
+type TaskCacheService interface {
+	GetTeamTasks(
+		ctx context.Context,
+		teamID string,
+		status *string,
+		assigneeID *string,
+		limit, offset int,
+		dest any,
+	) error
+
+	SetTeamTasks(
+		ctx context.Context,
+		teamID string,
+		status *string,
+		assigneeID *string,
+		limit, offset int,
+		tasks any,
+	) error
+
+	InvalidateTeamTasks(
+		ctx context.Context,
+		teamID string,
+	) error
+}
+
 // NewServices creates a container with all the services.
 func NewServices(
 	repos *repository.Repositories,
 	jwtManager *JWTManager,
-	cacheService *cache.CacheService,
+	cacheService TaskCacheService,
 	emailSender email.EmailSender,
 	logger zerolog.Logger) *Services {
 	return &Services{
@@ -84,3 +110,4 @@ func NewServices(
 		Analytics: NewAnalyticsService(repos.Analytics, logger),
 	}
 }
+
