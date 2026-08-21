@@ -29,6 +29,6 @@ func (c *CacheService) Allow(ctx context.Context, key string, limit int, window 
 	if err != nil {
 		return false, fmt.Errorf("rate limit script failed: %w", err)
 	}
-	
+
 	return current <= limit, nil
 }

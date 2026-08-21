@@ -13,8 +13,6 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-
-
 func TestNewEmailSender(t *testing.T) {
 	logger := zerolog.Nop()
 
@@ -170,7 +168,6 @@ func TestMailtrapSender_SendInvitation_Success(t *testing.T) {
 	require.Equal(t, "Invitation to join Marketing Team", received.Subject)
 	require.Equal(t, "Participant's invitation", received.Category)
 
-
 	require.NotEmpty(t, received.HTML)
 }
 
@@ -226,7 +223,7 @@ func TestMailtrapSender_SendInvitation_HTTPError(t *testing.T) {
 func TestMailtrapSender_SendInvitation_NetworkError(t *testing.T) {
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 	}))
-	
+
 	server.Close()
 
 	sender := &mailtrapSender{

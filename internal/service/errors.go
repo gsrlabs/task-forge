@@ -29,5 +29,4 @@ var (
 	ErrNoFieldsToUpdate  = errors.New("no fields to update")
 	ErrInvalidPagination = errors.New("invalid pagination parameters")
 	ErrInvalidFilter     = errors.New("invalid filter parameter")
-
 )

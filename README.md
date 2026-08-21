@@ -596,23 +596,28 @@ MAILTRAP
 
 ## 🧪 Тестирование
 
-### Планируется
-
-* Unit-тесты бизнес-логики
+* Unit-тесты
 * Интеграционные тесты PostgreSQL через Testcontainers
-* Минимум `85%` покрытия критических методов
+* Покрытия всех критических методов
 
-Покрытие и автоматический запуск тестов будут добавлены вместе с CI/CD.
+```bash
+# Все unit-тесты
+go test -v ./...
 
+# С покрытием
+go test -cover ./...
+
+# Только integration tests
+go test -v -tags=integration ./...
+
+# Весь проект с integration тестами
+go test -v -tags=integration -cover ./...
+```
 ---
 
 ## 🔄 CI/CD
 
-### Планируется
-
-CI/CD pipeline находится в процессе разработки.
-
-Планируется автоматизировать:
+CI/CD pipeline:
 
 ```text
 Commit
@@ -632,8 +637,6 @@ Docker Image
    ▼
 Deployment
 ```
-
-Также планируется добавить автоматический deployment script.
 
 ---
 
@@ -663,6 +666,10 @@ Deployment
 * [x] Goose migrations
 * [x] Graceful shutdown
 * [x] Prometheus metrics
+* [x] Unit tests
+* [x] PostgreSQL integration tests with Testcontainers
+* [x] Minimum 85% coverage for critical methods
+* [x] CI/CD
 
 ### Security
 
@@ -687,10 +694,6 @@ Deployment
 
 ### Planned
 
-* [ ] Unit tests
-* [ ] PostgreSQL integration tests with Testcontainers
-* [ ] Minimum 85% coverage for critical methods
-* [ ] CI/CD
 * [ ] Automated deployment script
 * [ ] Complete deployment documentation
 * [ ] Production configuration guide

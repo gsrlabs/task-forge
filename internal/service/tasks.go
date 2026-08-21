@@ -8,7 +8,7 @@ import (
 	"fmt"
 	"strings"
 
-	"task-forge/internal/cache"
+	//"task-forge/internal/cache"
 	"task-forge/internal/domain"
 	"task-forge/internal/dto"
 	"task-forge/internal/repository"
@@ -22,7 +22,7 @@ import (
 type taskService struct {
 	taskRepo     repository.TaskRepository
 	teamRepo     repository.TeamRepository
-	cacheService *cache.CacheService
+	cacheService CacheService
 	logger       zerolog.Logger
 }
 
@@ -30,7 +30,7 @@ type taskService struct {
 func NewTaskService(
 	taskRepo repository.TaskRepository,
 	teamRepo repository.TeamRepository,
-	cacheService *cache.CacheService,
+	cacheService CacheService,
 	logger zerolog.Logger,
 ) TaskService {
 	return &taskService{

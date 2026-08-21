@@ -18,11 +18,11 @@ type TeamStatsItem struct {
 
 // TopCreatorsResponse is a response with a list of top task creators grouped by teams.
 type TopCreatorsResponse struct {
-	Teams       []TeamTopCreators `json:"teams"`
-	TotalTeams  int               `json:"total_teams"`
-	MonthsPeriod int              `json:"months_period"`
-	TopN        int               `json:"top_n"`
-	SinceDate   string            `json:"since_date"`
+	Teams        []TeamTopCreators `json:"teams"`
+	TotalTeams   int               `json:"total_teams"`
+	MonthsPeriod int               `json:"months_period"`
+	TopN         int               `json:"top_n"`
+	SinceDate    string            `json:"since_date"`
 }
 
 // TeamTopCreators are top creators of tasks on the same team.
@@ -42,10 +42,10 @@ type CreatorStats struct {
 
 // IntegrityCheckResponse is the response with the result of the integrity check.
 type IntegrityCheckResponse struct {
-	Healthy         bool                  `json:"healthy"`
+	Healthy         bool                     `json:"healthy"`
 	Violations      []IntegrityViolationItem `json:"violations"`
-	ViolationsCount int                   `json:"violations_count"`
-	CheckedAt       string                `json:"checked_at"`
+	ViolationsCount int                      `json:"violations_count"`
+	CheckedAt       string                   `json:"checked_at"`
 }
 
 // IntegrityViolationItem is an element of the integrity violations list.

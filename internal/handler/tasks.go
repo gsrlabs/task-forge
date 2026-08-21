@@ -1,3 +1,4 @@
+// internal/handler/tasks.go
 package handler
 
 import (
@@ -18,7 +19,7 @@ import (
 // Query parameter defaults
 const (
 	defaultListLimit  = 20
-	maxListLimit     = 100
+	maxListLimit      = 100
 	defaultListOffset = 0
 )
 
@@ -347,7 +348,6 @@ func (h *TasksHandler) GetHistory(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-
 // Error mapping
 
 // handleServiceError maps service/repository errors to HTTP responses.
@@ -454,7 +454,6 @@ func (h *TasksHandler) handleServiceError(
 		})
 	}
 }
-
 
 // parseIntQuery parses an optional integer query parameter.
 // Returns (defaultValue, nil) when the raw value is empty.

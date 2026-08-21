@@ -79,7 +79,6 @@ type JWTConfig struct {
 	Secret string `mapstructure:"secret"`
 }
 
-
 type EmailMod struct {
 	Mode string `mapstructure:"mode"`
 }

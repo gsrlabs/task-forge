@@ -176,5 +176,3 @@ func setCookies(
 		Message: message,
 	})
 }
-
-

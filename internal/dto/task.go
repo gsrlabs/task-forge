@@ -51,7 +51,7 @@ type TaskHistoryItem struct {
 
 // TaskHistoryResponse is a response with a history of changes to the issue.
 type TaskHistoryResponse struct {
-	TaskID  string              `json:"task_id"`
-	History []TaskHistoryItem   `json:"history"`
-	Total   int                 `json:"total"`
+	TaskID  string            `json:"task_id"`
+	History []TaskHistoryItem `json:"history"`
+	Total   int               `json:"total"`
 }

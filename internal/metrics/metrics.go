@@ -38,8 +38,8 @@ func newHTTPMetricsWithRegistry(
 
 		Duration: prometheus.NewHistogramVec(
 			prometheus.HistogramOpts{
-				Name: "taskforge_http_request_duration_seconds",
-				Help: "HTTP request duration in seconds.",
+				Name:    "taskforge_http_request_duration_seconds",
+				Help:    "HTTP request duration in seconds.",
 				Buckets: prometheus.DefBuckets,
 			},
 			[]string{"method", "path"},

@@ -4,7 +4,7 @@ package service
 import (
 	"context"
 
-	"task-forge/internal/cache"
+	//"task-forge/internal/cache"
 	"task-forge/internal/dto"
 	"task-forge/internal/email"
 	"task-forge/internal/repository"
@@ -15,9 +15,9 @@ import (
 
 // Services aggregates all the application’s services.
 type Services struct {
-	Auth     AuthService
-	Teams    TeamService
-	Tasks    TaskService
+	Auth      AuthService
+	Teams     TeamService
+	Tasks     TaskService
 	Analytics AnalyticsService
 }
 
@@ -70,17 +70,43 @@ type AnalyticsService interface {
 	CheckAssigneeIntegrity(ctx context.Context, limit int) (*dto.IntegrityCheckResponse, error)
 }
 
+// CacheService for mock
+type CacheService interface {
+	GetTeamTasks(
+		ctx context.Context,
+		teamID string,
+		status *string,
+		assigneeID *string,
+		limit, offset int,
+		dest any,
+	) error
+
+	SetTeamTasks(
+		ctx context.Context,
+		teamID string,
+		status *string,
+		assigneeID *string,
+		limit, offset int,
+		tasks any,
+	) error
+
+	InvalidateTeamTasks(
+		ctx context.Context,
+		teamID string,
+	) error
+}
+
 // NewServices creates a container with all the services.
 func NewServices(
 	repos *repository.Repositories,
 	jwtManager *JWTManager,
-	cacheService *cache.CacheService,
+	cacheService CacheService,
 	emailSender email.EmailSender,
 	logger zerolog.Logger) *Services {
 	return &Services{
-		Auth:     NewAuthService(repos.Users, jwtManager, logger),
-		Teams:    NewTeamService(repos.Teams, repos.Users, emailSender, logger),
-		Tasks:    NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
+		Auth:      NewAuthService(repos.Users, jwtManager, logger),
+		Teams:     NewTeamService(repos.Teams, repos.Users, emailSender, logger),
+		Tasks:     NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
 		Analytics: NewAnalyticsService(repos.Analytics, logger),
 	}
 }

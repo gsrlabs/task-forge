@@ -13,9 +13,9 @@ import (
 
 // Handlers aggregates all HTTP handlers.
 type Handlers struct {
-	Auth  *AuthHandler
-	Teams *TeamsHandler
-	Tasks *TasksHandler
+	Auth      *AuthHandler
+	Teams     *TeamsHandler
+	Tasks     *TasksHandler
 	Analytics *AnalyticsHandler
 }
 
@@ -69,7 +69,7 @@ func (h *Handlers) RegisterRoutes(router *gin.Engine, middlewares *middleware.Mi
 		// Protected routes
 		protected := api.Group("")
 		protected.Use(middlewares.Auth.Authenticate())
-		
+
 		// Teams
 		protected.POST("/teams", h.Teams.Create)
 		protected.GET("/teams", h.Teams.List)

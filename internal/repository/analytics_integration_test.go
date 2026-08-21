@@ -2,7 +2,7 @@
 // +build integration
 
 // internal/repository/analytics_integration_test.go
- package repository
+package repository
 
 import (
 	"testing"
@@ -156,16 +156,16 @@ func TestAnalyticsRepository_GetTeamStats_DateFiltering(t *testing.T) {
 		domain.TaskStatusTodo,
 		nil,
 	)
-	
+
 	env.updateTaskStatus(
 		t,
 		recentTask.ID,
 		owner.ID,
 		domain.TaskStatusDone,
 	)
-	
+
 	oldDate := time.Now().AddDate(0, 0, -30)
-	
+
 	env.createOldDoneTask(
 		t,
 		team.ID,
@@ -175,16 +175,16 @@ func TestAnalyticsRepository_GetTeamStats_DateFiltering(t *testing.T) {
 	)
 
 	sinceDate := time.Now().AddDate(0, 0, -7)
-	
+
 	stats, err := env.analyticsRepo.GetTeamStats(
 		env.ctx,
 		7,
 		sinceDate,
 	)
-	
+
 	require.NoError(t, err)
 	require.Len(t, stats, 1)
-	
+
 	assert.Equal(
 		t,
 		1,
@@ -246,7 +246,6 @@ func TestAnalyticsRepository_GetTopCreators_SingleTeam(t *testing.T) {
 
 	env.createTestTaskWithHistory(t, team.ID, user3.ID, "Task Z", domain.TaskStatusTodo, nil)
 
-
 	creators, err := env.analyticsRepo.GetTopCreators(env.ctx, 1, 3)
 	require.NoError(t, err)
 	require.Len(t, creators, 3, "Should return top 3")
@@ -303,7 +302,7 @@ func TestAnalyticsRepository_GetTopCreators_MultipleTeams(t *testing.T) {
 	for _, c := range creators {
 		teamsMap[c.TeamName] = append(teamsMap[c.TeamName], c)
 	}
-	
+
 	alphaCreators := teamsMap["Alpha"]
 	require.Len(t, alphaCreators, 2)
 	assert.Equal(t, 1, alphaCreators[0].Rank)
@@ -402,7 +401,7 @@ func TestAnalyticsRepository_GetTopCreators_DateFiltering(t *testing.T) {
 		oldTask.ID,
 	)
 	require.NoError(t, err)
-	_ = recentTask 
+	_ = recentTask
 
 	creators, err := env.analyticsRepo.GetTopCreators(env.ctx, 1, 3)
 	require.NoError(t, err)

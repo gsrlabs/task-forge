@@ -1,13 +1,13 @@
 //go:build integration
 // +build integration
- 
+
 // internal/database/db_integration_test.go
 package database
 
 import (
 	"context"
 	"testing"
- 
+
 	"task-forge/internal/config"
 
 	"github.com/rs/zerolog"
@@ -39,9 +39,9 @@ func TestOpenPostgres_Integration(t *testing.T) {
 		),
 	)
 	require.NoError(t, err)
-	
+
 	t.Cleanup(func() {
-    require.NoError(t, postgresContainer.Terminate(context.Background()))
+		require.NoError(t, postgresContainer.Terminate(context.Background()))
 	})
 
 	// Get connection details
@@ -93,9 +93,9 @@ func TestOpenPostgres_InvalidCredentials_Integration(t *testing.T) {
 		),
 	)
 	require.NoError(t, err)
-	
+
 	t.Cleanup(func() {
-    require.NoError(t, postgresContainer.Terminate(context.Background()))
+		require.NoError(t, postgresContainer.Terminate(context.Background()))
 	})
 
 	host, err := postgresContainer.Host(ctx)

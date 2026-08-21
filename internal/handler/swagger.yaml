@@ -41,6 +41,8 @@ tags:
     description: Управление командами (требует JWT)
   - name: Tasks
     description: Управление задачами (требует JWT)
+  - name: Analytics
+    description: Аналитические запросы и проверки целостности данных (требует JWT)
 
 paths:
   # ========== AUTH ==========
@@ -1216,6 +1218,418 @@ paths:
               example:
                 error: "internal server error"
 
+	# ========== ANALYTICS ==========
+  /api/v1/analytics/teams/stats:
+    get:
+      tags: [Analytics]
+      summary: Статистика по всем командам
+      description: |
+        Возвращает агрегированную статистику по всем командам:
+        - Название команды
+        - Количество участников
+        - Количество задач в статусе `done` за указанный период
+        
+        **📊 SQL запрос:**
+        - `JOIN` 3+ таблиц (teams + team_members + tasks)
+        - `LEFT JOIN` с агрегацией (`COUNT`)
+        - `GROUP BY` по team_id
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: getTeamStats
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: days
+          in: query
+          required: false
+          description: |
+            Период в днях для подсчёта выполненных задач.
+            - Default: 7
+            - Min: 1
+            - Max: 365
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 365
+            default: 7
+          example: 7
+      responses:
+        '200':
+          description: Статистика успешно получена
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TeamStatsResponse'
+              examples:
+                with_stats:
+                  summary: Есть данные по командам
+                  value:
+                    stats:
+                      - team_id: "550e8400-e29b-41d4-a716-446655440000"
+                        team_name: "Engineering Team"
+                        members_count: 5
+                        done_tasks_count: 12
+                        done_tasks_since: "2026-08-14T10:30:00Z"
+                      - team_id: "660e8400-e29b-41d4-a716-446655440001"
+                        team_name: "Marketing Team"
+                        members_count: 3
+                        done_tasks_count: 7
+                        done_tasks_since: "2026-08-14T10:30:00Z"
+                    total_teams: 2
+                    days_period: 7
+                empty:
+                  summary: Нет команд в системе
+                  value:
+                    stats: []
+                    total_teams: 0
+                    days_period: 7
+        '400':
+          description: Неверный запрос (невалидный параметр days)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_days:
+                  summary: days не является числом
+                  value:
+                    error: "validation failed"
+                    details: "days must be a positive integer"
+                days_too_small:
+                  summary: days меньше 1
+                  value:
+                    error: "validation failed"
+                    details: "days must be at least 1"
+                days_too_large:
+                  summary: days превышает максимум
+                  value:
+                    error: "validation failed"
+                    details: "days cannot exceed 365"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "failed to retrieve team statistics"
+
+  /api/v1/analytics/teams/top-creators:
+    get:
+      tags: [Analytics]
+      summary: Топ создателей задач по командам
+      description: |
+        Возвращает топ-N пользователей по количеству созданных задач в каждой команде
+        за указанный период в месяцах.
+        
+        **📊 SQL запрос:**
+        - `CTE` (Common Table Expression) для группировки
+        - Оконная функция `RANK() OVER (PARTITION BY team_id ORDER BY count DESC)`
+        - `WHERE rank <= topN` для фильтрации
+        - Использует индекс `idx_tasks_created_at_team_creator`
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: getTopCreators
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: months
+          in: query
+          required: false
+          description: |
+            Период в месяцах для анализа.
+            - Default: 1
+            - Min: 1
+            - Max: 12
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 12
+            default: 1
+          example: 1
+        - name: top
+          in: query
+          required: false
+          description: |
+            Количество топ-создателей в каждой команде.
+            - Default: 3
+            - Min: 1
+            - Max: 10
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 10
+            default: 3
+          example: 3
+      responses:
+        '200':
+          description: Топ создателей успешно получен
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TopCreatorsResponse'
+              examples:
+                with_creators:
+                  summary: Есть данные по командам
+                  value:
+                    teams:
+                      - team_id: "550e8400-e29b-41d4-a716-446655440000"
+                        team_name: "Engineering Team"
+                        creators:
+                          - user_id: "770e8400-e29b-41d4-a716-446655440002"
+                            user_email: "alice@example.com"
+                            tasks_created: 25
+                            rank: 1
+                          - user_id: "880e8400-e29b-41d4-a716-446655440003"
+                            user_email: "bob@example.com"
+                            tasks_created: 18
+                            rank: 2
+                          - user_id: "990e8400-e29b-41d4-a716-446655440004"
+                            user_email: "carol@example.com"
+                            tasks_created: 12
+                            rank: 3
+                      - team_id: "660e8400-e29b-41d4-a716-446655440001"
+                        team_name: "Marketing Team"
+                        creators:
+                          - user_id: "aa0e8400-e29b-41d4-a716-446655440005"
+                            user_email: "dave@example.com"
+                            tasks_created: 15
+                            rank: 1
+                    total_teams: 2
+                    months_period: 1
+                    top_n: 3
+                    since_date: "2026-07-21T10:30:00Z"
+                empty:
+                  summary: Нет данных за период
+                  value:
+                    teams: []
+                    total_teams: 0
+                    months_period: 1
+                    top_n: 3
+                    since_date: "2026-07-21T10:30:00Z"
+        '400':
+          description: Неверный запрос (невалидные параметры)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_months:
+                  summary: months не является числом
+                  value:
+                    error: "validation failed"
+                    details: "months must be a positive integer"
+                months_too_small:
+                  summary: months меньше 1
+                  value:
+                    error: "validation failed"
+                    details: "months must be at least 1"
+                months_too_large:
+                  summary: months превышает максимум
+                  value:
+                    error: "validation failed"
+                    details: "months cannot exceed 12"
+                invalid_top:
+                  summary: top не является числом
+                  value:
+                    error: "validation failed"
+                    details: "top must be a positive integer"
+                top_too_small:
+                  summary: top меньше 1
+                  value:
+                    error: "validation failed"
+                    details: "top must be at least 1"
+                top_too_large:
+                  summary: top превышает максимум
+                  value:
+                    error: "validation failed"
+                    details: "top cannot exceed 10"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "failed to retrieve top creators statistics"
+
+  /api/v1/analytics/integrity/assignees:
+    get:
+      tags: [Analytics]
+      summary: Проверка целостности данных исполнителей задач
+      description: |
+        Находит задачи, где `assignee_id` указан, но исполнитель **не является членом команды**
+        этой задачи. Это нарушение целостности данных, которое в нормальных условиях
+        предотвращается FK constraint `fk_tasks_assignee_member`.
+        
+        **📊 SQL запрос:**
+        - `INNER JOIN teams` для получения названия команды
+        - `LEFT JOIN users` (×2) для email assignee и creator
+        - `NOT EXISTS` подзапрос для проверки отсутствия в `team_members`
+        - Использует индекс `idx_tasks_assignee_id`
+        
+        **⚠️ Важно:**
+        - Возвращает `200 OK` даже если найдены нарушения
+        - Поле `healthy: false` указывает на наличие проблем
+        - Используется для мониторинга и аудита целостности БД
+        
+        **🔐 Требования:**
+        - Необходима валидная JWT cookie `jwt`
+        
+        **🛡️ Rate Limiting (защищённые endpoints):**
+        - **IP Limit:** 100 запросов с одного IP за 1 минуту
+        - **User Limit:** 100 запросов от одного пользователя за 1 минуту
+      operationId: checkAssigneeIntegrity
+      security:
+        - CookieAuth: []
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          description: |
+            Максимальное количество нарушений в ответе.
+            - Default: 100
+            - Min: 1
+            - Max: 1000
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 1000
+            default: 100
+          example: 100
+      responses:
+        '200':
+          description: Проверка завершена (может содержать нарушения)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/IntegrityCheckResponse'
+              examples:
+                healthy:
+                  summary: Нет нарушений целостности
+                  value:
+                    healthy: true
+                    violations: []
+                    violations_count: 0
+                    checked_at: "2026-08-21T12:00:00Z"
+                unhealthy:
+                  summary: Обнаружены нарушения
+                  value:
+                    healthy: false
+                    violations:
+                      - task_id: "880e8400-e29b-41d4-a716-446655440003"
+                        team_id: "550e8400-e29b-41d4-a716-446655440000"
+                        team_name: "Engineering Team"
+                        task_title: "Fix database connection pool"
+                        task_status: "in_progress"
+                        assignee_id: "770e8400-e29b-41d4-a716-446655440002"
+                        assignee_email: "former-member@example.com"
+                        created_by_id: "550e8400-e29b-41d4-a716-446655440000"
+                        created_by_email: "owner@example.com"
+                        created_at: "2026-08-13T10:30:00Z"
+                        updated_at: "2026-08-13T11:45:00Z"
+                      - task_id: "990e8400-e29b-41d4-a716-446655440004"
+                        team_id: "660e8400-e29b-41d4-a716-446655440001"
+                        team_name: "Marketing Team"
+                        task_title: "Create landing page"
+                        task_status: "todo"
+                        assignee_id: "aa0e8400-e29b-41d4-a716-446655440005"
+                        assignee_email: "deleted-user@example.com"
+                        created_by_id: "660e8400-e29b-41d4-a716-446655440001"
+                        created_by_email: "marketing-lead@example.com"
+                        created_at: "2026-08-15T09:00:00Z"
+                        updated_at: "2026-08-15T09:00:00Z"
+                    violations_count: 2
+                    checked_at: "2026-08-21T12:00:00Z"
+        '400':
+          description: Неверный запрос (невалидный параметр limit)
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              examples:
+                invalid_limit:
+                  summary: limit не является числом
+                  value:
+                    error: "validation failed"
+                    details: "limit must be a positive integer"
+                limit_too_small:
+                  summary: limit меньше 1
+                  value:
+                    error: "validation failed"
+                    details: "limit must be at least 1"
+                limit_too_large:
+                  summary: limit превышает максимум
+                  value:
+                    error: "validation failed"
+                    details: "limit cannot exceed 1000"
+        '401':
+          description: Не авторизован
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "unauthorized"
+        '429':
+          description: Превышен лимит запросов
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "too many requests, please slow down"
+        '500':
+          description: Внутренняя ошибка сервера
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+              example:
+                error: "failed to perform integrity check"
+
 # ========== COMPONENTS ==========
 components:
   # 🔐 Security Schemes
@@ -1649,3 +2063,209 @@ components:
           example: 2
           description: Общее количество записей истории
       description: Ответ с полной историей изменений задачи
+
+    # ==== ANALYTICS: RESPONSES ====
+    TeamStatsResponse:
+      type: object
+      required: [stats, total_teams, days_period]
+      properties:
+        stats:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamStatsItem'
+          description: Список статистики по командам
+        total_teams:
+          type: integer
+          example: 5
+          description: Общее количество команд в системе
+        days_period:
+          type: integer
+          example: 7
+          description: Применённый период в днях
+      description: Ответ со статистикой по всем командам
+  
+    TeamStatsItem:
+      type: object
+      required: [team_id, team_name, members_count, done_tasks_count, done_tasks_since]
+      properties:
+        team_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID команды
+        team_name:
+          type: string
+          example: "Engineering Team"
+          description: Название команды
+        members_count:
+          type: integer
+          example: 5
+          description: Количество участников в команде
+        done_tasks_count:
+          type: integer
+          example: 12
+          description: Количество задач в статусе done за период
+        done_tasks_since:
+          type: string
+          format: date-time
+          example: "2026-08-14T10:30:00Z"
+          description: Начальная дата периода (ISO 8601)
+      description: Статистика одной команды
+  
+    TopCreatorsResponse:
+      type: object
+      required: [teams, total_teams, months_period, top_n, since_date]
+      properties:
+        teams:
+          type: array
+          items:
+            $ref: '#/components/schemas/TeamTopCreators'
+          description: Список команд с их топ-создателями
+        total_teams:
+          type: integer
+          example: 3
+          description: Общее количество команд с задачами за период
+        months_period:
+          type: integer
+          example: 1
+          description: Применённый период в месяцах
+        top_n:
+          type: integer
+          example: 3
+          description: Применённое значение top-N
+        since_date:
+          type: string
+          format: date-time
+          example: "2026-07-21T10:30:00Z"
+          description: Начальная дата периода (ISO 8601)
+      description: Ответ с топ создателями задач по командам
+  
+    TeamTopCreators:
+      type: object
+      required: [team_id, team_name, creators]
+      properties:
+        team_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID команды
+        team_name:
+          type: string
+          example: "Engineering Team"
+          description: Название команды
+        creators:
+          type: array
+          items:
+            $ref: '#/components/schemas/CreatorStats'
+          description: Топ-N создателей задач в этой команде (отсортированы по rank)
+      description: Топ создатели задач для одной команды
+  
+    CreatorStats:
+      type: object
+      required: [user_id, user_email, tasks_created, rank]
+      properties:
+        user_id:
+          type: string
+          format: uuid
+          example: "770e8400-e29b-41d4-a716-446655440002"
+          description: UUID пользователя
+        user_email:
+          type: string
+          format: email
+          example: "alice@example.com"
+          description: Email пользователя
+        tasks_created:
+          type: integer
+          example: 25
+          description: Количество созданных задач за период
+        rank:
+          type: integer
+          example: 1
+          description: Ранг в команде (1 = топ-1)
+      description: Статистика одного создателя задач
+  
+    IntegrityCheckResponse:
+      type: object
+      required: [healthy, violations, violations_count, checked_at]
+      properties:
+        healthy:
+          type: boolean
+          example: true
+          description: |
+            Флаг целостности данных:
+            - `true` — нарушений не обнаружено
+            - `false` — обнаружены нарушения (см. violations)
+        violations:
+          type: array
+          items:
+            $ref: '#/components/schemas/IntegrityViolationItem'
+          description: Список нарушений целостности (если healthy=false)
+        violations_count:
+          type: integer
+          example: 0
+          description: Количество обнаруженных нарушений
+        checked_at:
+          type: string
+          format: date-time
+          example: "2026-08-21T12:00:00Z"
+          description: Время выполнения проверки (ISO 8601)
+      description: Результат проверки целостности данных
+  
+    IntegrityViolationItem:
+      type: object
+      required: [task_id, team_id, team_name, task_title, task_status, assignee_id, assignee_email, created_by_id, created_by_email, created_at, updated_at]
+      properties:
+        task_id:
+          type: string
+          format: uuid
+          example: "880e8400-e29b-41d4-a716-446655440003"
+          description: UUID задачи с нарушением
+        team_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID команды задачи
+        team_name:
+          type: string
+          example: "Engineering Team"
+          description: Название команды
+        task_title:
+          type: string
+          example: "Fix database connection pool"
+          description: Название задачи
+        task_status:
+          type: string
+          enum: [todo, in_progress, review, done]
+          example: "in_progress"
+          description: Текущий статус задачи
+        assignee_id:
+          type: string
+          format: uuid
+          example: "770e8400-e29b-41d4-a716-446655440002"
+          description: UUID исполнителя (не является членом команды)
+        assignee_email:
+          type: string
+          format: email
+          example: "former-member@example.com"
+          description: Email исполнителя (может быть пустым, если пользователь удалён)
+        created_by_id:
+          type: string
+          format: uuid
+          example: "550e8400-e29b-41d4-a716-446655440000"
+          description: UUID создателя задачи
+        created_by_email:
+          type: string
+          format: email
+          example: "owner@example.com"
+          description: Email создателя задачи
+        created_at:
+          type: string
+          format: date-time
+          example: "2026-08-13T10:30:00Z"
+          description: Дата создания задачи (ISO 8601)
+        updated_at:
+          type: string
+          format: date-time
+          example: "2026-08-13T11:45:00Z"
+          description: Дата последнего обновления (ISO 8601)
+      description: Элемент нарушения целостности данных

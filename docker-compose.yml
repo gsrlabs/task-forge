@@ -7,8 +7,8 @@ services:
     container_name: taskforge-postgres
     restart: unless-stopped
 
-    ports:
-      - "${POSTGRES_PORT:-5432}:5432"
+    # ports:
+    #   - "${POSTGRES_PORT:-5432}:5432"
 
     environment:
       POSTGRES_USER: ${POSTGRES_USER}
@@ -131,7 +131,7 @@ services:
       # MAILTRAP
       MAILTRAP_API_KEY: ${MAILTRAP_API_KEY}
       MAILTRAP_DOMAIN: ${MAILTRAP_DOMAIN:-hello@demomailtrap.co}
-      MAILTRAP_NAME: ${MAILTRAP_NAME:-invoice}
+      MAILTRAP_NAME: ${MAILTRAP_NAME:-task-forge}
       # SMTP
       SMTP_HOST: ${SMTP_HOST:-task-forge}
       SMTP_PORT: ${SMTP_PORT:-1025}

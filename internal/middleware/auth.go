@@ -24,20 +24,20 @@ const (
 )
 
 type AuthMiddleware struct {
-	cache      *cache.CacheService
-	jwtManager *service.JWTManager
-	logger     zerolog.Logger
+	rateLimiter cache.RateLimiter
+	jwtManager  *service.JWTManager
+	logger      zerolog.Logger
 }
 
 func NewAuthMiddleware(
-	cacheService *cache.CacheService,
+	rateLimiter cache.RateLimiter, // ← Changed parameter type
 	jwtManager *service.JWTManager,
 	logger zerolog.Logger,
 ) *AuthMiddleware {
 	return &AuthMiddleware{
-		cache:      cacheService,
-		jwtManager: jwtManager,
-		logger:     logger,
+		rateLimiter: rateLimiter,
+		jwtManager:  jwtManager,
+		logger:      logger,
 	}
 }
 
@@ -74,7 +74,7 @@ func (m *AuthMiddleware) allowIP(
 ) bool {
 	key := "rl:auth_mw:ip:" + ip
 
-	allowed, err := m.cache.Allow(
+	allowed, err := m.rateLimiter.Allow(
 		ctx,
 		key,
 		ipRateLimit,
@@ -140,7 +140,7 @@ func (m *AuthMiddleware) allowUser(
 ) bool {
 	key := "rl:auth_mw:user:" + userID
 
-	allowed, err := m.cache.Allow(
+	allowed, err := m.rateLimiter.Allow(
 		ctx,
 		key,
 		userRateLimit,
