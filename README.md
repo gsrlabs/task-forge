@@ -571,26 +571,56 @@ SMTP
 MAILTRAP
 ```
 
-Полный список параметров и их значения будут дополнены в инструкции по запуску.
+### Краткое описание переменных окружения
+
+**Application:**
+
+- APP_MODE — режим приложения: debug или release.
+- APP_LOGGING_LEVEL — уровень логирования: debug или release.
+
+**Migrations:**
+
+- MIGRATIONS_AUTO — автоматически выполнять миграции при запуске, режим: true или false.
+
+**JWT:**
+
+- APP_JWT_SECRET — секретный ключ для подписи JWT.
+- APP_JWT_EXPIRY — срок действия JWT в часах.
+
+**Email:**
+
+- EMAIL_MODE — режима отправки email
+
+Доступны три режима:
+
+smtp — отправка через SMTP-сервер. В Docker Compose для разработки используется Mailpit.
+
+mailtrap — отправка через Mailtrap API. Используется для тестирования email без отправки реальным пользователям.
+
+console — вывод содержимого email в консоль. Удобно для локальной разработки и отладки.
+
+- Остальные переменные окружение по умолчанию
 
 ---
 
 ## 🚦 Запуск
 
-> Раздел находится в процессе подготовки.
+### Быстрый запуск для разработки
 
-Здесь будет описано:
+Для Linux/macOS можно установить и запустить Task Forge одной командой:
 
-* необходимые зависимости;
-* настройка `.env`;
-* запуск Docker Compose;
-* запуск миграций;
-* проверка состояния сервисов;
-* доступ к Swagger;
-* доступ к Mailpit;
-* локальная разработка;
-* автоматический deployment;
-* конфигурация production окружения.
+```bash
+curl -fsSL https://github.com/gsrlabs/task-forge/raw/main/setup.sh | sudo sh
+```
+
+### Ручной запуск
+
+```bash
+git clone https://github.com/gsrlabs/task-forge.git
+cd task-forge
+cp .env.example .env
+docker compose up --build
+```
 
 ---
 
@@ -620,22 +650,22 @@ go test -v -tags=integration -cover ./...
 CI/CD pipeline:
 
 ```text
-Commit
-   │
-   ▼
-Build
-   │
-   ▼
-Tests
-   │
-   ▼
-Coverage
-   │
-   ▼
-Docker Image
-   │
-   ▼
-Deployment
+CI/CD
+│
+├── test
+│   ├── Checkout
+│   ├── Setup Go
+│   ├── Download deps
+│   ├── Linter
+│   ├── Build
+│   ├── Unit Tests
+│   └── Integration Tests
+│
+└── docker
+    ├── Checkout
+    ├── Login Docker Hub
+    ├── Setup Buildx
+    └── Build and push
 ```
 
 ---
@@ -694,7 +724,7 @@ Deployment
 
 ### Planned
 
-* [ ] Automated deployment script
+* [x] Automated deployment script
 * [ ] Complete deployment documentation
 * [ ] Production configuration guide
 
