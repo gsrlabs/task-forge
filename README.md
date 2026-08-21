@@ -1,5 +1,7 @@
 # Task Forge
-https://taskforge.gsrhost.ru/swagger/
+
+[https://taskforge.gsrhost.ru - swagger документация (self-host)](https://taskforge.gsrhost.ru/swagger/)
+[mailpit - проверка почты](https://mailpit.gsrhost.ru) 
 
 REST API сервис для управления задачами в командах.
 
