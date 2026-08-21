@@ -31,7 +31,7 @@ info:
 servers:
   - url: http://localhost:8081
     description: Local development server
-  - url: https://api.taskforge.com
+  - url: https://taskforge.gsrhost.ru
     description: Production server
 
 tags:

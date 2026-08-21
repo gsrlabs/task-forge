@@ -1,4 +1,5 @@
 # Task Forge
+https://taskforge.gsrhost.ru/swagger/
 
 REST API сервис для управления задачами в командах.
 
@@ -529,6 +530,7 @@ Swagger содержит описание REST API, включая:
 * invitations;
 * tasks;
 * task history;
+* analytics;
 * параметры фильтрации;
 * pagination;
 * схемы запросов и ответов;
@@ -575,12 +577,15 @@ MAILTRAP
 
 **Application:**
 
-- APP_MODE — режим приложения: debug или release.
-- APP_LOGGING_LEVEL — уровень логирования: debug или release.
+- APP_MODE — режим приложения: `debug`, `development`, `release`, `production`.
+  Влияет на: rate limiting (пропускается в debug), cookie Secure флаг, уровень pgx трейсинга.
+
+- APP_LOGGING_LEVEL — уровень логирования: `trace`, `debug`, `info`, `warn`, `error`.
+  По умолчанию: `info`.
 
 **Migrations:**
 
-- MIGRATIONS_AUTO — автоматически выполнять миграции при запуске, режим: true или false.
+- MIGRATIONS_AUTO — автоматически выполнять миграции при запуске, режим: `true` или `false`.
 
 **JWT:**
 
@@ -593,11 +598,11 @@ MAILTRAP
 
 Доступны три режима:
 
-smtp — отправка через SMTP-сервер. В Docker Compose для разработки используется Mailpit.
+`smtp` — отправка через SMTP-сервер. В Docker Compose для разработки используется Mailpit.
 
-mailtrap — отправка через Mailtrap API. Используется для тестирования email без отправки реальным пользователям.
+`mailtrap` — отправка через Mailtrap API. Используется для тестирования email без отправки реальным пользователям.
 
-console — вывод содержимого email в консоль. Удобно для локальной разработки и отладки.
+`console` — вывод содержимого email в консоль. Удобно для локальной разработки и отладки.
 
 - Остальные переменные окружение по умолчанию
 

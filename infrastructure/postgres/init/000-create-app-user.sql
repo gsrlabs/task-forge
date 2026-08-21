@@ -1,5 +1,3 @@
--- 000-create-app-user.sql
-
 DO $$
 BEGIN
     IF NOT EXISTS (
@@ -9,6 +7,10 @@ BEGIN
         CREATE ROLE taskforge_app
             WITH LOGIN
             PASSWORD 'postgres_dev_password';
+    ELSE
+        ALTER ROLE taskforge_app
+            WITH LOGIN
+            PASSWORD 'postgres_dev_password';
     END IF;
 
     IF NOT EXISTS (
@@ -16,6 +18,10 @@ BEGIN
         WHERE rolname = 'taskforge_migrator'
     ) THEN
         CREATE ROLE taskforge_migrator
+            WITH LOGIN
+            PASSWORD 'migrator_dev_password';
+    ELSE
+        ALTER ROLE taskforge_migrator
             WITH LOGIN
             PASSWORD 'migrator_dev_password';
     END IF;
