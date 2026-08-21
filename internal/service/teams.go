@@ -220,9 +220,9 @@ func (s *teamService) Invite(
 		Msg("User invited to team successfully")
 
 	inviter, err := s.userRepo.FindByID(ctx, inviterID)
-	
+
 	inviterName := ""
-	
+
 	if err != nil || inviter == nil {
 		s.logger.Error().
 			Err(err).

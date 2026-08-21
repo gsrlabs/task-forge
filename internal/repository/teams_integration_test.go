@@ -105,19 +105,19 @@ func TestTeamRepository_FindByID_NilUUID(t *testing.T) {
 }
 
 func TestTeamRepository_FindByUserID_EmptyList(t *testing.T) {
-    env := setupPostgres(t)
-    user := env.createTestUser(t, randomEmail())
+	env := setupPostgres(t)
+	user := env.createTestUser(t, randomEmail())
 
-    teams, err := env.teamRepo.FindByUserID(env.ctx, user.ID)
-    require.NoError(t, err)
-    
-    require.NotNil(t, teams, "Should return empty slice, not nil")
-    assert.Empty(t, teams, "User without teams should get empty list")
-    assert.Equal(t, 0, len(teams))
-    
-    jsonData, err := json.Marshal(teams)
-    require.NoError(t, err)
-    assert.Equal(t, "[]", string(jsonData), "Should serialize to empty array, not null")
+	teams, err := env.teamRepo.FindByUserID(env.ctx, user.ID)
+	require.NoError(t, err)
+
+	require.NotNil(t, teams, "Should return empty slice, not nil")
+	assert.Empty(t, teams, "User without teams should get empty list")
+	assert.Equal(t, 0, len(teams))
+
+	jsonData, err := json.Marshal(teams)
+	require.NoError(t, err)
+	assert.Equal(t, "[]", string(jsonData), "Should serialize to empty array, not null")
 }
 
 func TestTeamRepository_FindByUserID_SingleTeam(t *testing.T) {
@@ -397,7 +397,7 @@ func TestTeamRepository_RemoveMember_NotFound(t *testing.T) {
 func TestTeamRepository_RemoveMember_NonExistentTeam(t *testing.T) {
 	env := setupPostgres(t)
 
-	user := env.createTestUser(t, randomEmail(),)
+	user := env.createTestUser(t, randomEmail())
 	nonExistentTeamID := uuid.New()
 
 	err := env.teamRepo.RemoveMember(env.ctx, nonExistentTeamID, user.ID)

@@ -388,9 +388,9 @@ func TestConfig_Validate(t *testing.T) {
 		{
 			name: "mixed fatal and warning errors",
 			modifyConfig: func(c *Config) {
-				c.App.Port = ""                          // Fatal
-				c.App.EncryptionKey = "short"            // Warning
-				c.App.Mode = "unknown"                   // Warning
+				c.App.Port = ""               // Fatal
+				c.App.EncryptionKey = "short" // Warning
+				c.App.Mode = "unknown"        // Warning
 			},
 			expectedFatal:  true,
 			expectedErrors: 3,

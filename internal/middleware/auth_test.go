@@ -38,7 +38,6 @@ func (m *MockRateLimiter) Allow(
 	return args.Bool(0), args.Error(1)
 }
 
-
 func init() {
 	gin.SetMode(gin.TestMode)
 }
@@ -93,7 +92,6 @@ func TestAuthenticate_AllowIP_Success(t *testing.T) {
 	rateLimiter.On("Allow", mock.Anything, "rl:auth_mw:ip:192.168.1.1", 100, time.Minute).
 		Return(true, nil)
 
-
 	rateLimiter.On("Allow", mock.Anything, mock.MatchedBy(func(key string) bool {
 		return len(key) > 0 // any user key
 	}), 100, time.Minute).Return(true, nil)
@@ -131,7 +129,7 @@ func TestAuthenticate_IPRateLimit_Blocked(t *testing.T) {
 	require.NoError(t, err)
 	assert.Equal(t, "too many requests, please slow down", resp.Error)
 
-	rateLimiter.AssertNumberOfCalls(t, "Allow", 1) 
+	rateLimiter.AssertNumberOfCalls(t, "Allow", 1)
 }
 
 func TestAuthenticate_IPRateLimit_FailOpen(t *testing.T) {
@@ -141,7 +139,6 @@ func TestAuthenticate_IPRateLimit_FailOpen(t *testing.T) {
 	rateLimiter.On("Allow", mock.Anything, mock.MatchedBy(func(key string) bool {
 		return len(key) > 0 && key[:13] == "rl:auth_mw:ip"
 	}), 100, time.Minute).Return(false, errors.New("redis connection refused"))
-
 
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
@@ -253,7 +250,6 @@ func TestAuthenticate_ExpiredToken(t *testing.T) {
 	userID := uuid.New()
 	email := "user@example.com"
 
-
 	w := httptest.NewRecorder()
 	c, _ := gin.CreateTestContext(w)
 
@@ -306,7 +302,6 @@ func TestAuthenticate_UserRateLimit_FailOpen(t *testing.T) {
 		return len(key) > 0 && key[:14] == "rl:auth_mw:user"
 	}), 100, time.Minute).Return(false, errors.New("redis error"))
 
-
 	_ = mw
 }
 
@@ -314,7 +309,7 @@ func TestAuthenticate_FullFlow_Success(t *testing.T) {
 	rateLimiter := new(MockRateLimiter)
 	mw := newTestAuthMiddleware(rateLimiter)
 	token, userID, email := generateValidToken(t)
-	
+
 	ip := "192.168.1.1"
 
 	rateLimiter.On(

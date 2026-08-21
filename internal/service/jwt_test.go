@@ -16,7 +16,6 @@ import (
 
 const testSecret = "test-secret-key-at-least-32-chars-long-for-hmac-sha256"
 
-
 func TestJWTManager_GenerateToken_Success(t *testing.T) {
 	manager := NewJWTManager(testSecret, 24*time.Hour)
 
@@ -42,7 +41,6 @@ func TestJWTManager_GenerateToken_Success(t *testing.T) {
 	assert.True(t, expiresAt.After(before))
 	assert.True(t, expiresAt.After(after) || expiresAt.Equal(after))
 }
-
 
 func TestJWTManager_GenerateToken_RoundTrip(t *testing.T) {
 	manager := NewJWTManager(testSecret, 24*time.Hour)
@@ -144,7 +142,6 @@ func TestJWTManager_ValidateToken_Expired(t *testing.T) {
 		"Expired token should return ErrInvalidToken")
 	assert.Nil(t, result)
 }
-
 
 func TestJWTManager_ValidateToken_WrongSecret(t *testing.T) {
 	manager := NewJWTManager(testSecret, 24*time.Hour)
@@ -270,8 +267,8 @@ func TestJWTManager_ValidateToken_InvalidUUIDFormat(t *testing.T) {
 func TestJWTManager_ValidateToken_MissingEmail(t *testing.T) {
 	claims := jwt.MapClaims{
 		"user_id": uuid.New().String(),
-		"exp": time.Now().Add(1 * time.Hour).Unix(),
-		"iat": time.Now().Unix(),
+		"exp":     time.Now().Add(1 * time.Hour).Unix(),
+		"iat":     time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -310,7 +307,7 @@ func TestJWTManager_ValidateToken_MissingExp(t *testing.T) {
 	claims := jwt.MapClaims{
 		"user_id": uuid.New().String(),
 		"email":   "user@example.com",
-		"iat": time.Now().Unix(),
+		"iat":     time.Now().Unix(),
 	}
 
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
@@ -376,4 +373,3 @@ func TestJWTManager_DifferentDurations(t *testing.T) {
 		})
 	}
 }
-

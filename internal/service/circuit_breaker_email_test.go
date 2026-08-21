@@ -169,7 +169,7 @@ func TestCircuitBreakerEmailSender_SuccessResetsFailures(t *testing.T) {
 	err = service.SendInvitation(data)
 	require.NoError(t, err)
 
-	for range emailCircuitFailureThreshold-1 {
+	for range emailCircuitFailureThreshold - 1 {
 		err = service.SendInvitation(data)
 		require.Error(t, err)
 	}
@@ -205,7 +205,7 @@ func TestCircuitBreakerEmailSender_SuccessResetsConsecutiveFailures(t *testing.T
 		sender,
 		zerolog.Nop(),
 	)
-	
+
 	for range 4 {
 		err := service.SendInvitation(data)
 		require.Error(t, err)

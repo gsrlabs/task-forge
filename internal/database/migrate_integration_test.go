@@ -40,31 +40,31 @@ func TestRunMigrations_Integration(t *testing.T) {
 		),
 	)
 	require.NoError(t, err)
-	
+
 	t.Cleanup(func() {
 		require.NoError(t, postgresContainer.Terminate(context.Background()))
 	})
-	
+
 	createTestRoles(t, ctx, postgresContainer)
-	
+
 	host, err := postgresContainer.Host(ctx)
 	require.NoError(t, err)
-	
+
 	port, err := postgresContainer.MappedPort(ctx, "5432")
 	require.NoError(t, err)
-	
+
 	cfg := config.DatabaseConfig{
 		Host: host,
 		Port: int(port.Num()),
 		Name: "testdb",
 	}
-	
+
 	migrationsCfg := config.MigrationConfig{
 		User:     "taskforge_migrator",
 		Password: "migrator_dev_password",
 		Path:     migrationsPath(t),
 	}
-	
+
 	require.NoError(t, RunMigrations(
 		cfg,
 		migrationsCfg,

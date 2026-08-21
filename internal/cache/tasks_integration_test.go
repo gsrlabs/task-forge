@@ -163,7 +163,6 @@ func TestTeamTasks_Invalidate_DoesNotAffectOtherTeams(t *testing.T) {
 	require.NoError(t, service.SetTeamTasks(ctx, team1, &status, nil, 20, 0, tasks))
 	require.NoError(t, service.SetTeamTasks(ctx, team2, &status, nil, 20, 0, tasks))
 
-
 	require.NoError(t, service.InvalidateTeamTasks(ctx, team1))
 
 	var retrieved1 []string
@@ -176,7 +175,6 @@ func TestTeamTasks_Invalidate_DoesNotAffectOtherTeams(t *testing.T) {
 	assert.Equal(t, tasks, retrieved2, "Other team's cache should not be affected")
 }
 
-
 func TestTeamTasks_TTL(t *testing.T) {
 	service, ctx := setupRedisContainer(t)
 
@@ -185,7 +183,7 @@ func TestTeamTasks_TTL(t *testing.T) {
 	tasks := []string{"task-1"}
 
 	require.NoError(t, service.SetTeamTasks(ctx, teamID, &status, nil, 20, 0, tasks))
-	
+
 	key := teamTasksKey(teamID, &status, nil, 20, 0)
 	ttl, err := service.Client().TTL(ctx, key).Result()
 	require.NoError(t, err)

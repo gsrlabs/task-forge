@@ -73,7 +73,7 @@ func (s *circuitBreakerEmailSender) SendInvitation(
 	})
 
 	if err != nil {
-    return fmt.Errorf("send invitation email: %w", err)
+		return fmt.Errorf("send invitation email: %w", err)
 	}
 
 	return nil

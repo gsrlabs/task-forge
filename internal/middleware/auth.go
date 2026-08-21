@@ -25,20 +25,20 @@ const (
 
 type AuthMiddleware struct {
 	rateLimiter cache.RateLimiter
-	jwtManager *service.JWTManager
-	logger     zerolog.Logger
+	jwtManager  *service.JWTManager
+	logger      zerolog.Logger
 }
 
 func NewAuthMiddleware(
-    rateLimiter cache.RateLimiter,  // ← Changed parameter type
-    jwtManager *service.JWTManager,
-    logger zerolog.Logger,
+	rateLimiter cache.RateLimiter, // ← Changed parameter type
+	jwtManager *service.JWTManager,
+	logger zerolog.Logger,
 ) *AuthMiddleware {
-    return &AuthMiddleware{
-        rateLimiter: rateLimiter,
-        jwtManager:  jwtManager,
-        logger:      logger,
-    }
+	return &AuthMiddleware{
+		rateLimiter: rateLimiter,
+		jwtManager:  jwtManager,
+		logger:      logger,
+	}
 }
 
 func (m *AuthMiddleware) Authenticate() gin.HandlerFunc {

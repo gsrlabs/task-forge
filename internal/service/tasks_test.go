@@ -237,20 +237,20 @@ func TestTaskService_Create_InvalidAssigneeID(t *testing.T) {
 	assert.Nil(t, resp)
 
 	teamRepo.AssertNotCalled(
-			t,
-			"IsTeamMember",
-			mock.Anything,
-			mock.Anything,
-			mock.Anything,
-		)
-	
-		taskRepo.AssertNotCalled(
-			t,
-			"Create",
-			mock.Anything,
-			mock.Anything,
-			mock.Anything,
-		)
+		t,
+		"IsTeamMember",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	)
+
+	taskRepo.AssertNotCalled(
+		t,
+		"Create",
+		mock.Anything,
+		mock.Anything,
+		mock.Anything,
+	)
 }
 
 func TestTaskService_Create_UserNotTeamMember(t *testing.T) {

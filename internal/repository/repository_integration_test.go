@@ -190,7 +190,6 @@ func migrationsPath(t *testing.T) string {
 	)
 }
 
-
 // ============================================================================
 // Common helpers
 // ============================================================================
@@ -254,12 +253,12 @@ func (env *testEnv) createTestTaskWithHistory(
 	t.Helper()
 
 	task := &domain.Task{
-		ID:          uuid.New(),
-		TeamID:      teamID,
-		Title:       title,
-		Status:      status,
-		AssigneeID:  assigneeID,
-		CreatedBy:   creatorID,
+		ID:         uuid.New(),
+		TeamID:     teamID,
+		Title:      title,
+		Status:     status,
+		AssigneeID: assigneeID,
+		CreatedBy:  creatorID,
 	}
 
 	changesJSON, err := json.Marshal(map[string]any{

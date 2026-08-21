@@ -231,8 +231,8 @@ func TestAnalyticsHandler_GetTeamStats_DaysTooSmall(t *testing.T) {
 	userID := uuid.New()
 
 	tests := []struct {
-		name  string
-		days  string
+		name string
+		days string
 	}{
 		{"zero", "0"},
 		{"negative", "-5"},

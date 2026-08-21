@@ -13,14 +13,14 @@ import (
 )
 
 const (
-	DefaultDaysPeriod   = 7
-	MaxDaysPeriod       = 365
-	DefaultMonthsPeriod = 1
-	MaxMonthsPeriod     = 12
-	DefaultTopN         = 3
-	MaxTopN             = 10
+	DefaultDaysPeriod     = 7
+	MaxDaysPeriod         = 365
+	DefaultMonthsPeriod   = 1
+	MaxMonthsPeriod       = 12
+	DefaultTopN           = 3
+	MaxTopN               = 10
 	DefaultIntegrityLimit = 100
-	MaxIntegrityLimit   = 1000
+	MaxIntegrityLimit     = 1000
 )
 
 type analyticsService struct {
@@ -176,7 +176,6 @@ func (s *analyticsService) GetTopCreators(
 		SinceDate:    sinceDate.Format("2006-01-02T15:04:05Z07:00"),
 	}, nil
 }
-
 
 // CheckAssigneeIntegrity performs data integrity verification.
 //

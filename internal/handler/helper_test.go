@@ -80,7 +80,7 @@ func TestValidationErrorResponse_LoginScope(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			err := v.ValidateStruct(tt.req)  // ← Используем ValidateStruct
+			err := v.ValidateStruct(tt.req) // ← Используем ValidateStruct
 			require.Error(t, err)
 
 			resp := ValidationErrorResponse(err, ValidationScopeLogin)

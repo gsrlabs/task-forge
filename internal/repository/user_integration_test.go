@@ -5,8 +5,9 @@
 package repository
 
 import (
-	"testing"
 	"task-forge/internal/domain"
+	"testing"
+
 	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -49,7 +50,7 @@ func TestUserRepository_Create_DuplicateEmail(t *testing.T) {
 		PasswordHash: "hash1",
 	}
 	require.NoError(t, env.userRepo.Create(env.ctx, user1))
-	
+
 	user2 := &domain.User{
 		ID:           uuid.New(),
 		Email:        email,
@@ -61,7 +62,6 @@ func TestUserRepository_Create_DuplicateEmail(t *testing.T) {
 	require.ErrorIs(t, err, ErrUserAlreadyExists,
 		"Error should be ErrUserAlreadyExists")
 }
-
 
 func TestUserRepository_FindByEmail_Success(t *testing.T) {
 	env := setupPostgres(t)

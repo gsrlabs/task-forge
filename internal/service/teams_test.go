@@ -267,7 +267,6 @@ func TestTeamService_List_RepositoryError(t *testing.T) {
 	teamRepo.AssertExpectations(t)
 }
 
-
 func TestTeamService_Invite_Success_AsOwner(t *testing.T) {
 	teamRepo := new(mockTeamRepository)
 	userRepo := new(mockUserRepository)
@@ -361,7 +360,6 @@ func TestTeamService_Invite_Success_AsAdmin(t *testing.T) {
 	userRepo.AssertExpectations(t)
 	emailSender.AssertExpectations(t)
 }
-
 
 func TestTeamService_Invite_TeamNotFound(t *testing.T) {
 	teamRepo := new(mockTeamRepository)

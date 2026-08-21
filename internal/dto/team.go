@@ -13,7 +13,7 @@ type TeamListItem struct {
 // Request
 // =========================================================================
 
-//CreateTeamRequest request to create a team.
+// CreateTeamRequest request to create a team.
 type CreateTeamRequest struct {
 	Name string `json:"name" validate:"required,min=1,max=255"`
 }
@@ -34,7 +34,6 @@ type CreateTeamResponse struct {
 	Name   string `json:"name"`
 	Role   string `json:"role"`
 }
-
 
 // InviteUserResponse response to a user invitation.
 type InviteUserResponse struct {

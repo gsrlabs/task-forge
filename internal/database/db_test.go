@@ -74,7 +74,7 @@ func TestMapPgxLogLevel(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			result := mapPgxLogLevel(tt.mode)
-			assert.Equal(t, tt.expected, result, 
+			assert.Equal(t, tt.expected, result,
 				"mapPgxLogLevel(%q) should return %v", tt.mode, tt.expected)
 		})
 	}

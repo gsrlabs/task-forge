@@ -100,7 +100,6 @@ func (h *AnalyticsHandler) GetTeamStats(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-
 // GetTopCreators processes GET /api/v1/analytics/teams/top-creators
 //
 // Query parameters:
@@ -216,13 +215,12 @@ func (h *AnalyticsHandler) GetTopCreators(c *gin.Context) {
 	c.JSON(http.StatusOK, response)
 }
 
-
 // CheckAssigneeIntegrity processes GET /api/v1/analytics/integrity/assignees
 //
 // Query parameters:
 // - limit (optional, default 100, max 1000) — maximum number of violations in the response
 func (h *AnalyticsHandler) CheckAssigneeIntegrity(c *gin.Context) {
-	
+
 	limit := service.DefaultIntegrityLimit
 	if limitStr := c.Query("limit"); limitStr != "" {
 		parsed, err := strconv.Atoi(limitStr)
@@ -265,7 +263,7 @@ func (h *AnalyticsHandler) CheckAssigneeIntegrity(c *gin.Context) {
 
 		limit = parsed
 	}
-	
+
 	response, err := h.service.CheckAssigneeIntegrity(c.Request.Context(), limit)
 	if err != nil {
 		h.logger.Error().
@@ -292,4 +290,3 @@ func (h *AnalyticsHandler) CheckAssigneeIntegrity(c *gin.Context) {
 
 	c.JSON(http.StatusOK, response)
 }
-

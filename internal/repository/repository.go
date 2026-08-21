@@ -14,9 +14,9 @@ import (
 
 // Repositories aggregates all the application’s repositories.
 type Repositories struct {
-	Users UserRepository
-	Teams TeamRepository
-	Tasks TaskRepository
+	Users     UserRepository
+	Teams     TeamRepository
+	Tasks     TaskRepository
 	Analytics AnalyticsRepository
 }
 
@@ -35,7 +35,7 @@ type TeamRepository interface {
 	AddMember(ctx context.Context, member *domain.TeamMember) error
 	GetUserRole(ctx context.Context, teamID, userID uuid.UUID) (domain.TeamRole, error)
 	RemoveMember(ctx context.Context, teamID, userID uuid.UUID) error
-	IsTeamMember(ctx context.Context, teamID uuid.UUID, userID uuid.UUID,) (bool, error)
+	IsTeamMember(ctx context.Context, teamID uuid.UUID, userID uuid.UUID) (bool, error)
 }
 
 // TaskRepository describes a contract for working with tasks.
@@ -69,7 +69,6 @@ type TaskRepository interface {
 		ctx context.Context,
 		taskID uuid.UUID,
 	) ([]domain.TaskHistoryWithUser, error)
-
 }
 
 type AnalyticsRepository interface {
@@ -84,9 +83,9 @@ type AnalyticsRepository interface {
 // NewRepositories creates a container with all repositories.
 func NewRepositories(db *pgxpool.Pool, logger zerolog.Logger) *Repositories {
 	return &Repositories{
-		Users: NewUserRepository(db, logger),
-		Teams: NewTeamRepository(db, logger),
-		Tasks: NewTaskRepository(db, logger),
+		Users:     NewUserRepository(db, logger),
+		Teams:     NewTeamRepository(db, logger),
+		Tasks:     NewTaskRepository(db, logger),
 		Analytics: NewAnalyticsRepository(db, logger),
 	}
 }

@@ -15,9 +15,9 @@ import (
 
 // Services aggregates all the application’s services.
 type Services struct {
-	Auth     AuthService
-	Teams    TeamService
-	Tasks    TaskService
+	Auth      AuthService
+	Teams     TeamService
+	Tasks     TaskService
 	Analytics AnalyticsService
 }
 
@@ -104,10 +104,9 @@ func NewServices(
 	emailSender email.EmailSender,
 	logger zerolog.Logger) *Services {
 	return &Services{
-		Auth:     NewAuthService(repos.Users, jwtManager, logger),
-		Teams:    NewTeamService(repos.Teams, repos.Users, emailSender, logger),
-		Tasks:    NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
+		Auth:      NewAuthService(repos.Users, jwtManager, logger),
+		Teams:     NewTeamService(repos.Teams, repos.Users, emailSender, logger),
+		Tasks:     NewTaskService(repos.Tasks, repos.Teams, cacheService, logger),
 		Analytics: NewAnalyticsService(repos.Analytics, logger),
 	}
 }
-

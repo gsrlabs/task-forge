@@ -727,9 +727,9 @@ func TestAnalyticsService_CheckAssigneeIntegrity_DateFormatting(t *testing.T) {
 
 func TestAnalyticsService_GetTeamStats_AllParametersNormalized(t *testing.T) {
 	testCases := []struct {
-		name           string
-		inputDays      int
-		expectedDays   int
+		name         string
+		inputDays    int
+		expectedDays int
 	}{
 		{"zero", 0, DefaultDaysPeriod},
 		{"negative", -10, DefaultDaysPeriod},
@@ -760,11 +760,11 @@ func TestAnalyticsService_GetTeamStats_AllParametersNormalized(t *testing.T) {
 
 func TestAnalyticsService_GetTopCreators_AllParametersNormalized(t *testing.T) {
 	testCases := []struct {
-		name            string
-		inputMonths     int
-		inputTopN       int
-		expectedMonths  int
-		expectedTopN    int
+		name           string
+		inputMonths    int
+		inputTopN      int
+		expectedMonths int
+		expectedTopN   int
 	}{
 		{"both defaults", 0, 0, DefaultMonthsPeriod, DefaultTopN},
 		{"months negative", -5, 3, DefaultMonthsPeriod, 3},

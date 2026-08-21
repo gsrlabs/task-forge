@@ -25,15 +25,15 @@ type TopCreator struct {
 // IntegrityViolation represents a violation of data integrity:
 // a task where the assignee is not a member of the task team.
 type IntegrityViolation struct {
-	TaskID        string    `json:"task_id"`
-	TeamID        string    `json:"team_id"`
-	TeamName      string    `json:"team_name"`
-	TaskTitle     string    `json:"task_title"`
-	TaskStatus    string    `json:"task_status"`
-	AssigneeID    string    `json:"assignee_id"`
-	AssigneeEmail string    `json:"assignee_email"`
-	CreatedByID   string    `json:"created_by_id"`
-	CreatedByEmail string   `json:"created_by_email"`
-	CreatedAt     time.Time `json:"created_at"`
-	UpdatedAt     time.Time `json:"updated_at"`
+	TaskID         string    `json:"task_id"`
+	TeamID         string    `json:"team_id"`
+	TeamName       string    `json:"team_name"`
+	TaskTitle      string    `json:"task_title"`
+	TaskStatus     string    `json:"task_status"`
+	AssigneeID     string    `json:"assignee_id"`
+	AssigneeEmail  string    `json:"assignee_email"`
+	CreatedByID    string    `json:"created_by_id"`
+	CreatedByEmail string    `json:"created_by_email"`
+	CreatedAt      time.Time `json:"created_at"`
+	UpdatedAt      time.Time `json:"updated_at"`
 }

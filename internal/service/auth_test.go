@@ -393,7 +393,6 @@ func TestAuthService_Login_FindByEmailError(t *testing.T) {
 	userRepo.AssertExpectations(t)
 }
 
-
 func TestAuthService_Login_EmptyPasswordHash(t *testing.T) {
 	userRepo := new(MockUserRepository)
 	svc := newTestAuthService(t, userRepo)

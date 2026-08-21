@@ -52,4 +52,3 @@ type AuthResponse struct {
 	ExpiresAt time.Time   `json:"expires_at"`
 	User      domain.User `json:"user"`
 }
-

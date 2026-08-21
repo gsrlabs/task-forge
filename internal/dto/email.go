@@ -8,4 +8,3 @@ type InvitationEmailData struct {
 	Role           string
 	InviteURL      string
 }
-

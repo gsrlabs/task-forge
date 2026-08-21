@@ -36,9 +36,9 @@ func (r *teamRepository) Create(ctx context.Context, userID uuid.UUID, team *dom
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 	defer func() {
-    if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
-        r.logger.Printf("failed to rollback transaction: %v", err)
-    }
+		if err := tx.Rollback(ctx); err != nil && !errors.Is(err, pgx.ErrTxClosed) {
+			r.logger.Printf("failed to rollback transaction: %v", err)
+		}
 	}()
 
 	query := `
@@ -236,7 +236,7 @@ func (r *teamRepository) IsTeamMember(
 				AND user_id = $2
 		)
 	`
-	
+
 	var exists bool
 
 	if err := r.db.QueryRow(

@@ -57,7 +57,6 @@ func NewEmailSender(mode string, smtpCfg config.SMTPConfig, mailtrapCfg config.M
 	}
 }
 
-
 // CONSOLE SENDER
 type consoleSender struct {
 	logger zerolog.Logger
@@ -75,7 +74,6 @@ func (s *consoleSender) SendInvitation(data dto.InvitationEmailData) error {
 
 	return nil
 }
-
 
 // MAILTRAP SENDER
 type mailtrapSender struct {
