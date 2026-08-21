@@ -666,6 +666,10 @@ Deployment
 * [x] Goose migrations
 * [x] Graceful shutdown
 * [x] Prometheus metrics
+* [x] Unit tests
+* [x] PostgreSQL integration tests with Testcontainers
+* [x] Minimum 85% coverage for critical methods
+* [x] CI/CD
 
 ### Security
 
@@ -690,10 +694,6 @@ Deployment
 
 ### Planned
 
-* [x] Unit tests
-* [x] PostgreSQL integration tests with Testcontainers
-* [x] Minimum 85% coverage for critical methods
-* [x] CI/CD
 * [ ] Automated deployment script
 * [ ] Complete deployment documentation
 * [ ] Production configuration guide
