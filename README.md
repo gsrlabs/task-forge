@@ -158,7 +158,7 @@ HALF-OPEN
 
 В приложении реализован сбор HTTP-метрик для последующего мониторинга через Prometheus.
 ```Bash
-curl http://localhost:8081/metrics
+curl http://localhost:9099/metrics
 ```
 Собираются следующие показатели:
 
@@ -523,7 +523,7 @@ Mailpit используется для локального тестирова�
 
 **Swagger UI**
 
-[http://localhost:8081/swagger](http://localhost:8081/swagger)
+[http://localhost:9099/swagger](http://localhost:9099/swagger)
 
 Swagger содержит описание REST API, включая:
 

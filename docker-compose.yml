@@ -140,7 +140,7 @@ services:
       SMTP_PASSWORD: ${SMTP_PASSWORD}
 
     ports:
-      - "${APP_PORT}:8081"
+      - "${APP_PORT}:9099"
 
     depends_on:
       postgres:
