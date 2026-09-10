@@ -23,6 +23,6 @@ WORKDIR /app
 COPY --from=builder /app/app .
 COPY --from=builder /app/migrations ./migrations
 
-EXPOSE 8081
+EXPOSE 9099
 
 CMD ["./app"]

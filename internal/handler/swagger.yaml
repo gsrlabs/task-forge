@@ -29,10 +29,12 @@ info:
     url: https://github.com/gsrlabs/task-forge
 
 servers:
-  - url: http://localhost:8081
-    description: Local development server
   - url: https://taskforge.gsrhost.ru
     description: Production server
+  - url: http://localhost:9099
+    description: Local development server
+
+
 
 tags:
   - name: Auth
